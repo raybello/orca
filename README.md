@@ -250,6 +250,77 @@ Pair with your desktop app to monitor and steer your agents from your phone.
 
 ---
 
+## Building Desktop Installers (this fork)
+
+The upstream release workflows (`release-cut.yml`, `adhoc-mac-build.yml`) need signing certificates, SignPath and GitHub App credentials that only exist on `stablyai/orca`. This fork has its own manual workflow that needs none of them.
+
+### Build Windows and macOS installers in CI
+
+1. On GitHub, open **Actions → Fork desktop installers → Run workflow**. Pick the branch (or type a branch, tag or SHA in **ref**) and choose `both`, `windows` or `macos`. From the CLI:
+
+   ```bash
+   gh workflow run fork-desktop-installers.yml --repo raybello/orca --ref main -f platforms=both
+   ```
+
+2. Wait for the run (about 7–10 minutes; the Windows and macOS jobs run in parallel).
+3. Download the artifacts from the bottom of the run page:
+   - `orca-windows-installer`: the NSIS installer (`orca-windows-setup.exe`).
+   - `orca-macos-installers`: `orca-macos-arm64.dmg` and `orca-macos-x64.dmg`, plus the matching `.zip` files (used by the updater).
+
+Artifacts are kept for 14 days. Nothing is published anywhere. Each build is versioned `x.y.z-local.<timestamp>.<commit>`, so it is easy to tell apart from an official release.
+
+To build on your own machine instead, run `pnpm install:release` once, then `pnpm build:mac` on a Mac or `pnpm build:win` on Windows (build Windows installers on Windows; the app has native modules). Output lands in `dist/`.
+
+### Installing the unsigned builds
+
+- **Windows:** the installer is unsigned. Upstream's dev builds are unsigned too, and only its stable releases are signed (through SignPath). SmartScreen shows "Windows protected your PC": choose **More info → Run anyway**.
+- **macOS:** the app is ad-hoc signed and not notarized, so Gatekeeper blocks a double-click. Right-click the app and choose **Open** once, or clear the quarantine flag:
+
+  ```bash
+  xattr -dr com.apple.quarantine /Applications/Orca.app
+  ```
+
+  Because the signing identity changes with every build, macOS privacy grants (Accessibility, Screen Recording, and similar) do not carry over between builds. Fork builds also do not auto-update.
+
+### Signed and notarized macOS builds
+
+A build that opens without warnings and keeps its privacy grants must be signed with an Apple **Developer ID Application** certificate and notarized by Apple. You need:
+
+| Requirement                          | What it is                                                                                                          |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| Apple Developer Program membership   | Paid account (US$99/year). Required for Developer ID certificates and notarization.                                 |
+| Developer ID Application certificate | Created at developer.apple.com under Certificates. Export it from Keychain Access as a `.p12` file with a password. |
+| App-specific password                | Created at appleid.apple.com under Sign-In and Security. Used only by the notary service.                           |
+| Apple ID and Team ID                 | The account email, and the 10-character Team ID shown in the Developer account.                                     |
+
+The build reads these five values (checked by `config/scripts/verify-macos-release-env.mjs`):
+
+| Variable                      | Value                                                                        |
+| ----------------------------- | ---------------------------------------------------------------------------- |
+| `CSC_LINK`                    | The `.p12` certificate, base64-encoded (`base64 -i cert.p12`) or a file path |
+| `CSC_KEY_PASSWORD`            | The `.p12` password                                                          |
+| `APPLE_ID`                    | Apple ID email                                                               |
+| `APPLE_APP_SPECIFIC_PASSWORD` | The app-specific password                                                    |
+| `APPLE_TEAM_ID`               | Team ID                                                                      |
+
+**Locally:** export the five variables and run `pnpm build:mac:release`. It sets `ORCA_MAC_RELEASE=1`, which turns on hardened runtime, real code signing (it fails instead of falling back to ad-hoc) and notarization. Notarization adds about ten minutes.
+
+**In CI:** store the values as repository secrets, then update the `macos` job in `.github/workflows/fork-desktop-installers.yml`:
+
+```bash
+gh secret set MAC_CERTS --repo raybello/orca < <(base64 -i cert.p12)
+gh secret set MAC_CERTS_PASSWORD --repo raybello/orca
+gh secret set APPLE_ID --repo raybello/orca
+gh secret set APPLE_APP_SPECIFIC_PASSWORD --repo raybello/orca
+gh secret set APPLE_TEAM_ID --repo raybello/orca
+```
+
+In the "Build package inputs", "Prepare Electron native runtime" and "Package macOS installer" steps, set `ORCA_MAC_RELEASE: '1'` and pass the secrets as `CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD` and `APPLE_TEAM_ID` (as `adhoc-mac-build.yml` does), and remove `CSC_IDENTITY_AUTO_DISCOVERY: 'false'` from the packaging step. Only run the signed workflow on branches you trust: it has your signing identity in reach, which is why upstream refuses to build pull-request refs with it.
+
+Windows stays unsigned, as in upstream's dev builds.
+
+---
+
 ## Developing
 
 Want to contribute or run locally? See our [CONTRIBUTING.md](.github/CONTRIBUTING.md) guide.
