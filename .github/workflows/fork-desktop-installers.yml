@@ -1,0 +1,170 @@
+name: Fork desktop installers
+
+# Why: builds unsigned Windows and macOS installers of any ref on a fork, without the upstream
+# signing secrets, SignPath, or release repos that release-cut.yml and adhoc-mac-build.yml need.
+# Manual only. Installers are uploaded as run artifacts (download them from the run page); nothing
+# is published or notarized, so they are for testing and personal use, not distribution.
+#
+#   gh workflow run fork-desktop-installers.yml --ref main -f platforms=both
+#
+# Windows installers are unsigned (SmartScreen warns on first run) and macOS builds are ad-hoc
+# signed (right-click > Open the first time). Neither auto-updates from a fork.
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Branch, tag, or SHA to build (default: the branch selected above)'
+        required: false
+        default: ''
+        type: string
+      platforms:
+        description: 'Which installers to build'
+        required: true
+        default: both
+        type: choice
+        options:
+          - both
+          - windows
+          - macos
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fork-desktop-installers-${{ inputs.ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    name: Windows installer
+    # Why the owner check: this file only makes sense on a fork; upstream has real release workflows.
+    if: github.repository_owner != 'stablyai' && inputs.platforms != 'macos'
+    runs-on: windows-2022
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          persist-credentials: false
+
+      - name: Cache electron-builder downloads
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~\AppData\Local\electron\Cache
+            ~\AppData\Local\electron-builder\Cache
+          key: electron-builder-win-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            electron-builder-win-
+
+      - uses: ./.github/actions/install-node-dependencies
+        with:
+          native-runtime: electron
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            mobile/pnpm-lock.yaml
+
+      # Why here: electron-builder's beforePack requires out/mobile-web, and the bundle
+      # build resolves React Native and Expo from mobile/node_modules.
+      - uses: ./.github/actions/install-mobile-dependencies
+
+      - name: Build package inputs
+        run: pnpm run build:release:parallel
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+
+      - name: Prepare Electron native runtime
+        run: node config/scripts/ensure-native-runtime.mjs --runtime=electron
+
+      # Why a local build version: tells fork installers apart from official ones and from each other.
+      - name: Package Windows installer
+        shell: bash
+        env:
+          ORCA_REUSE_PREPARED_NATIVE_RUNTIME: '1'
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: |
+          set -euo pipefail
+          ORCA_LOCAL_BUILD_VERSION="$(node -e "import('./config/scripts/build-mac-local.mjs').then((m) => console.log(m.getLocalBuildIdentity().version))")"
+          export ORCA_LOCAL_BUILD_VERSION
+          echo "Building $ORCA_LOCAL_BUILD_VERSION"
+          pnpm exec electron-builder --config config/electron-builder.config.cjs --win
+
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v7
+        with:
+          name: orca-windows-installer
+          path: |
+            dist/*.exe
+            dist/*.blockmap
+          if-no-files-found: error
+          retention-days: 14
+
+  macos:
+    name: macOS installer
+    if: github.repository_owner != 'stablyai' && inputs.platforms != 'windows'
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/setup@v2
+        with:
+          install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: package.json
+          cache: pnpm
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            mobile/pnpm-lock.yaml
+
+      - name: Cache electron-builder downloads
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/Library/Caches/electron
+            ~/Library/Caches/electron-builder
+          key: electron-builder-mac-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            electron-builder-mac-
+
+      # Why both CPUs: the mac config packages x64 and arm64 from this arm64 runner, so the
+      # install must carry both variants of the native optional dependencies.
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --cpu=current,x64,arm64
+
+      - uses: ./.github/actions/install-mobile-dependencies
+
+      - name: Build package inputs
+        run: pnpm run build:release
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+
+      - name: Prepare Electron native runtime
+        run: pnpm run ensure:electron-runtime
+
+      # Why build-mac-local.mjs: it stamps the local build version and runs electron-builder --mac.
+      # Without ORCA_MAC_RELEASE the helpers are ad-hoc signed and nothing is notarized.
+      - name: Package macOS installer
+        run: node config/scripts/build-mac-local.mjs
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+      - name: Upload macOS installers
+        uses: actions/upload-artifact@v7
+        with:
+          name: orca-macos-installers
+          path: |
+            dist/*.dmg
+            dist/*.zip
+          if-no-files-found: error
+          retention-days: 14
