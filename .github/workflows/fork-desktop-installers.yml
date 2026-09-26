@@ -78,6 +78,7 @@ jobs:
       - name: Prepare Electron native runtime
         run: node config/scripts/ensure-native-runtime.mjs --runtime=electron
 
+      # Why --publish never: electron-builder publishes implicitly on CI and fails without a GitHub token.
       # Why a local build version: tells fork installers apart from official ones and from each other.
       - name: Package Windows installer
         shell: bash
@@ -89,7 +90,7 @@ jobs:
           ORCA_LOCAL_BUILD_VERSION="$(node -e "import('./config/scripts/build-mac-local.mjs').then((m) => console.log(m.getLocalBuildIdentity().version))")"
           export ORCA_LOCAL_BUILD_VERSION
           echo "Building $ORCA_LOCAL_BUILD_VERSION"
-          pnpm exec electron-builder --config config/electron-builder.config.cjs --win
+          pnpm exec electron-builder --config config/electron-builder.config.cjs --win --publish never
 
       - name: Upload Windows installer
         uses: actions/upload-artifact@v7
@@ -152,12 +153,20 @@ jobs:
       - name: Prepare Electron native runtime
         run: pnpm run ensure:electron-runtime
 
-      # Why build-mac-local.mjs: it stamps the local build version and runs electron-builder --mac.
-      # Without ORCA_MAC_RELEASE the helpers are ad-hoc signed and nothing is notarized.
+      # Why not build-mac-local.mjs: it does not pass --publish, and electron-builder publishes
+      # implicitly on CI (and then fails for lack of a GitHub token). Without ORCA_MAC_RELEASE the
+      # helpers are ad-hoc signed and nothing is notarized.
       - name: Package macOS installer
-        run: node config/scripts/build-mac-local.mjs
+        shell: bash
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: |
+          set -euo pipefail
+          ORCA_LOCAL_BUILD_VERSION="$(node -e "import('./config/scripts/build-mac-local.mjs').then((m) => console.log(m.getLocalBuildIdentity().version))")"
+          ORCA_BUILD_COMMIT="$(git rev-parse --short=12 HEAD)"
+          export ORCA_LOCAL_BUILD_VERSION ORCA_BUILD_COMMIT
+          echo "Building $ORCA_LOCAL_BUILD_VERSION"
+          pnpm exec electron-builder --config config/electron-builder.config.cjs --mac --publish never
 
       - name: Upload macOS installers
         uses: actions/upload-artifact@v7
