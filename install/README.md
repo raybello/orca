@@ -46,5 +46,3 @@ Windows on ARM is not supported by the Windows script.
 - To update Orca, get the latest version of this folder and run the script again.
 - The app is not code-signed. On macOS it is signed locally so it runs on your Mac. On Windows,
   SmartScreen may warn the first time you open it: choose More info, then Run anyway.
-- The Windows build cannot be run inside a Windows Sandbox or a work profile that blocks
-  installing software; ask your IT team if the script is stopped.
