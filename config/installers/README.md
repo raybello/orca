@@ -21,6 +21,24 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubus
 Orca's source is downloaded to a folder named `Orca` in your home folder. To update Orca later, run
 the same line again.
 
+## One-line uninstall
+
+Removes the app (and, on Windows, runs its uninstaller). Asks before deleting anything else —
+your Orca settings/history, the downloaded source, and the Node.js/pnpm build cache all default to
+"keep".
+
+**macOS**: open Terminal and paste:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/raybello/orca/main/config/installers/uninstall-orca-mac.sh | bash
+```
+
+**Windows**: open PowerShell (or Command Prompt) and paste:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/raybello/orca/main/config/installers/uninstall-orca-windows.ps1 -OutFile $env:TEMP\uninstall-orca.ps1; & $env:TEMP\uninstall-orca.ps1"
+```
+
 ## Already have this folder?
 
 Run the script from it instead:
@@ -28,6 +46,10 @@ Run the script from it instead:
 - macOS: `bash config/installers/install-orca-mac.sh` (or double-click `config/installers/install-orca-mac.command`;
   if macOS blocks it, right-click, choose Open, then Open)
 - Windows: double-click `config\installers\install-orca-windows.bat`
+
+The same applies to uninstalling: `bash config/installers/uninstall-orca-mac.sh` (or double-click
+`config/installers/uninstall-orca-mac.command`), or double-click
+`config\installers\uninstall-orca-windows.bat` on Windows.
 
 ## What it does
 
@@ -44,9 +66,18 @@ Run the script from it instead:
 
 Windows on ARM is not supported by the Windows script.
 
+## What uninstall does
+
+1. Quits Orca if it's running, then removes the app (macOS: `~/Applications/Orca.app`; Windows:
+   runs the installed uninstaller silently) and any Desktop/Start Menu shortcuts.
+2. Asks, one at a time, whether to also delete: Orca's saved settings/history/cache, the
+   downloaded source folder, and the Node.js/pnpm build cache. Each defaults to "no" — press
+   Enter to keep it.
+
 ## Good to know
 
-- To skip every question and accept everything, add `--yes` on macOS
+- To skip every question and accept everything (install AND uninstall — the uninstaller will also
+  delete your settings, the source folder and the build cache), add `--yes` on macOS
   (`... | bash -s -- --yes`) or `-Yes` on Windows (add it after the script path).
 - Logs are saved in `~/.orca-build/logs` (macOS) or `%LOCALAPPDATA%\OrcaBuild\logs` (Windows).
 - The app is not code-signed. On macOS it is signed locally so it runs on your Mac. On Windows,
