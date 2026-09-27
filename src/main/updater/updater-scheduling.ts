@@ -4,6 +4,7 @@ import { withUpdaterSpan } from '../observability/instrumentation'
 import {
   AUTO_UPDATE_CHECK_INTERVAL_MS,
   AUTO_UPDATE_RETRY_INTERVAL_MS,
+  AUTOMATIC_UPDATE_CHECKS_ENABLED,
   MAX_AUTO_UPDATE_RETRY_INTERVAL_MS
 } from './updater-state'
 import { UpdaterCheckFailure } from './updater-check-failure'
@@ -15,6 +16,12 @@ export abstract class UpdaterScheduling extends UpdaterCheckFailure {
   }
 
   protected scheduleAutomaticUpdateCheck(delayMs: number): void {
+    // Why here, not only at the call sites: every retry/reschedule path (including a benign
+    // failure from a *manual* check, see sendCheckFailureStatus) funnels through this one
+    // function, so gating here is the single choke point that keeps automatic checks off.
+    if (!AUTOMATIC_UPDATE_CHECKS_ENABLED) {
+      return
+    }
     let effectiveDelayMs = delayMs
     // All retry-cadence callers pass exactly this constant, so keying backoff on it keeps one choke point instead of threading a flag through every schedule site.
     if (delayMs === AUTO_UPDATE_RETRY_INTERVAL_MS) {
