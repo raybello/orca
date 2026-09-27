@@ -1,5 +1,7 @@
-# Builds Orca from this checkout and installs it for the current user (Windows).
+# Builds Orca and installs it for the current user (Windows).
 # Checks the build tools first and asks before installing anything.
+# Run it from a checkout, or straight from GitHub (it clones the repo itself):
+#   powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/raybello/orca/main/install/install-orca-windows.ps1 -OutFile $env:TEMP\install-orca.ps1; & $env:TEMP\install-orca.ps1"
 [CmdletBinding()]
 param(
   [switch]$Yes,
@@ -11,7 +13,10 @@ $ProgressPreference = 'SilentlyContinue'
 # Windows PowerShell 5.1 can default to old TLS versions that nodejs.org and cursor.com reject.
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+$RepoUrl = if ($env:ORCA_REPO_URL) { $env:ORCA_REPO_URL } else { 'https://github.com/raybello/orca.git' }
+$RepoBranch = if ($env:ORCA_BRANCH) { $env:ORCA_BRANCH } else { 'main' }
+$SourceDir = if ($env:ORCA_SOURCE_DIR) { $env:ORCA_SOURCE_DIR } else { Join-Path $env:USERPROFILE 'Orca' }
+$RepoRoot = $null
 $OrcaHome = if ($env:ORCA_BUILD_HOME) { $env:ORCA_BUILD_HOME } else { Join-Path $env:LOCALAPPDATA 'OrcaBuild' }
 $NodeDir = Join-Path $OrcaHome 'node'
 $ToolsDir = Join-Path $OrcaHome 'tools'
@@ -62,7 +67,6 @@ $logFile = Join-Path $LogDir ("install-{0}.log" -f (Get-Date -Format 'yyyyMMdd-H
 Start-Transcript -Path $logFile | Out-Null
 
 try {
-  if (-not (Test-Path (Join-Path $RepoRoot 'package.json'))) { Fail 'Run this script from inside the Orca folder.' }
   if ($env:PROCESSOR_ARCHITECTURE -ne 'AMD64') { Fail 'This script supports 64-bit Intel/AMD Windows only (not Windows on ARM).' }
 
   Say 'Orca installer for Windows'
@@ -85,6 +89,29 @@ try {
     if (-not (Confirm-Step 'Install Git with winget?')) { Fail 'Cannot build without Git.' }
     Install-WithWinget 'Git.Git'
     Ok 'installed Git'
+  }
+
+  # --- Source code: this checkout, or a fresh clone ---
+  Say 'Getting the Orca source'
+  $checkout = if ($PSScriptRoot) { Join-Path $PSScriptRoot '..' } else { $null }
+  if ($checkout -and (Test-Path (Join-Path $checkout 'package.json')) -and (Test-Path (Join-Path $checkout 'config\electron-builder.config.cjs'))) {
+    $RepoRoot = (Resolve-Path $checkout).Path
+    Ok "using this checkout: $RepoRoot"
+  }
+  elseif (Test-Path (Join-Path $SourceDir '.git')) {
+    $RepoRoot = $SourceDir
+    Ok "found $SourceDir"
+    if (Confirm-Step "Update it to the latest $RepoBranch?") {
+      try { Invoke-Checked 'git' @('-C', $SourceDir, 'pull', '--ff-only', 'origin', $RepoBranch) }
+      catch { Warn 'Could not update; building the copy you have.' }
+    }
+  }
+  elseif (Test-Path $SourceDir) { Fail "$SourceDir already exists and is not an Orca checkout. Move it or set ORCA_SOURCE_DIR." }
+  else {
+    if (-not (Confirm-Step "Download Orca from $RepoUrl into $SourceDir?")) { Fail 'Cannot build without the source.' }
+    Invoke-Checked 'git' @('clone', '--depth', '1', '--branch', $RepoBranch, $RepoUrl, $SourceDir)
+    $RepoRoot = $SourceDir
+    Ok "downloaded to $SourceDir"
   }
 
   # --- Python (node-gyp) ---
