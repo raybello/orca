@@ -1,7 +1,7 @@
 # Builds Orca and installs it for the current user (Windows).
 # Checks the build tools first and asks before installing anything.
 # Run it from a checkout, or straight from GitHub (it clones the repo itself):
-#   powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/raybello/orca/main/install/install-orca-windows.ps1 -OutFile $env:TEMP\install-orca.ps1; & $env:TEMP\install-orca.ps1"
+#   powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/raybello/orca/main/config/installers/install-orca-windows.ps1 -OutFile $env:TEMP\install-orca.ps1; & $env:TEMP\install-orca.ps1"
 [CmdletBinding()]
 param(
   [switch]$Yes,
@@ -93,7 +93,7 @@ try {
 
   # --- Source code: this checkout, or a fresh clone ---
   Say 'Getting the Orca source'
-  $checkout = if ($PSScriptRoot) { Join-Path $PSScriptRoot '..' } else { $null }
+  $checkout = if ($PSScriptRoot) { Join-Path $PSScriptRoot '..\..' } else { $null }
   if ($checkout -and (Test-Path (Join-Path $checkout 'package.json')) -and (Test-Path (Join-Path $checkout 'config\electron-builder.config.cjs'))) {
     $RepoRoot = (Resolve-Path $checkout).Path
     Ok "using this checkout: $RepoRoot"

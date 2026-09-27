@@ -9,13 +9,13 @@ to set up anything first.
 **macOS**: open Terminal and paste:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/raybello/orca/main/install/install-orca-mac.sh | bash
+curl -fsSL https://raw.githubusercontent.com/raybello/orca/main/config/installers/install-orca-mac.sh | bash
 ```
 
 **Windows**: open PowerShell (or Command Prompt) and paste:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/raybello/orca/main/install/install-orca-windows.ps1 -OutFile $env:TEMP\install-orca.ps1; & $env:TEMP\install-orca.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/raybello/orca/main/config/installers/install-orca-windows.ps1 -OutFile $env:TEMP\install-orca.ps1; & $env:TEMP\install-orca.ps1"
 ```
 
 Orca's source is downloaded to a folder named `Orca` in your home folder. To update Orca later, run
@@ -25,9 +25,9 @@ the same line again.
 
 Run the script from it instead:
 
-- macOS: `bash install/install-orca-mac.sh` (or double-click `install/install-orca-mac.command`;
+- macOS: `bash config/installers/install-orca-mac.sh` (or double-click `config/installers/install-orca-mac.command`;
   if macOS blocks it, right-click, choose Open, then Open)
-- Windows: double-click `install\install-orca-windows.bat`
+- Windows: double-click `config\installers\install-orca-windows.bat`
 
 ## What it does
 

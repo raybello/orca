@@ -2,7 +2,7 @@
 # Builds Orca and installs it for the current user (macOS).
 # Checks the build tools first and asks before installing anything.
 # Run it from a checkout, or straight from GitHub (it clones the repo itself):
-#   curl -fsSL https://raw.githubusercontent.com/raybello/orca/main/install/install-orca-mac.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/raybello/orca/main/config/installers/install-orca-mac.sh | bash
 set -euo pipefail
 
 REPO_URL="${ORCA_REPO_URL:-https://github.com/raybello/orca.git}"
@@ -84,8 +84,8 @@ main() {
 
   # --- Source code: this checkout, or a fresh clone ---
   say "Getting the Orca source"
-  if [ -n "$SCRIPT_PATH" ] && [ -f "$(dirname "$SCRIPT_PATH")/../package.json" ] && [ -f "$(dirname "$SCRIPT_PATH")/../config/electron-builder.config.cjs" ]; then
-    REPO_ROOT="$(cd "$(dirname "$SCRIPT_PATH")/.." && pwd)"
+  if [ -n "$SCRIPT_PATH" ] && [ -f "$(dirname "$SCRIPT_PATH")/../../package.json" ] && [ -f "$(dirname "$SCRIPT_PATH")/../../config/electron-builder.config.cjs" ]; then
+    REPO_ROOT="$(cd "$(dirname "$SCRIPT_PATH")/../.." && pwd)"
     ok "using this checkout: $REPO_ROOT"
   elif [ -d "$SOURCE_DIR/.git" ]; then
     REPO_ROOT="$SOURCE_DIR"
