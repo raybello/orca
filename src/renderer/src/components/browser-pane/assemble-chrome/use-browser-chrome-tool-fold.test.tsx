@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { act, cleanup, render } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { BROWSER_CHROME_ADDRESS_SLOT_ATTRIBUTE } from './browser-chrome-address-slot'
 import {
   BROWSER_CHROME_ADDRESS_MIN_WIDTH_PX,
@@ -26,7 +26,10 @@ function Host({
   const rowRef = useRef<HTMLDivElement>(null)
   const folded = useBrowserChromeToolFold(rowRef, stages)
   layout.visibleTools = stages.length - folded.size
-  onFolded(folded.size)
+  // Why an effect: render must stay pure, so the parent reads the count after commit, not during render.
+  useEffect(() => {
+    onFolded(folded.size)
+  })
   return (
     <div ref={rowRef} data-testid="row">
       <div {...{ [BROWSER_CHROME_ADDRESS_SLOT_ATTRIBUTE]: 'true' }} />
