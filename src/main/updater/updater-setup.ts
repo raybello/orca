@@ -18,7 +18,7 @@ import { createUpdaterDiagnosticLogger } from '../linux-package-install-diagnost
 import { registerAutoUpdaterHandlers } from '../updater-events'
 import { getServeUpdateHandoffFailure } from '../serve-update-handoff'
 import { recordUpdaterLifecycle } from '../updater-lifecycle-diagnostics'
-import { AUTO_UPDATE_CHECK_INTERVAL_MS } from './updater-state'
+import { AUTO_UPDATE_CHECK_INTERVAL_MS, AUTOMATIC_UPDATE_CHECKS_ENABLED } from './updater-state'
 import { UpdaterDownloadInstall } from './updater-download-install'
 import type { PreQuitCleanupFailureMode, UpdateInstallMode } from './updater-state'
 
@@ -221,6 +221,13 @@ export class UpdaterSetup extends UpdaterDownloadInstall {
         this.userInitiatedCheck = value
       }
     })
+
+    // Why gated: this fork's feed always points at stablyai/orca's releases, which lack this
+    // fork's own features, so an unsolicited background check or nudge campaign must never
+    // start (see AUTOMATIC_UPDATE_CHECKS_ENABLED). Manual "Check for Updates" still works below.
+    if (!AUTOMATIC_UPDATE_CHECKS_ENABLED) {
+      return
+    }
 
     void this.checkForUpdateNudge()
     this.scheduleUpdateNudgeCheck()

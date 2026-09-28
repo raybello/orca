@@ -5,6 +5,17 @@ import type { UpdateSource, UpdateStatus } from '../../shared/update-status-type
 import type { ReleaseChannel } from '../../shared/release-channel'
 import type { PrimaryEventSuppression, UpdateCheckVariant } from './updater-types'
 
+// Why off by default on this fork: the update feed always points at stablyai/orca's releases
+// (see updater-setup.ts), which lack this fork's own features. An automatic background check or
+// nudge campaign would eventually surface an "Update available" card nudging the user onto a
+// build that drops them. Manual "Check for Updates" (menu/Settings) is unaffected — it still
+// calls the same feed on explicit request; only the unsolicited background path is disabled.
+//
+// The env override exists only for this file's own test suite (src/main/updater.*.test.ts),
+// which exercises the real scheduling mechanism unchanged; the shared harness
+// (updater-test-harness.ts) sets it before each test run so those tests keep validating that
+// mechanism regardless of this fork's packaged default.
+export const AUTOMATIC_UPDATE_CHECKS_ENABLED = process.env.ORCA_TEST_AUTOMATIC_UPDATE_CHECKS === '1'
 export const AUTO_UPDATE_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000
 export const AUTO_UPDATE_RETRY_INTERVAL_MS = 60 * 60 * 1000
 // Why: a persistently-failing feed used to re-arm the retry at a fixed 1h cadence forever (issue #7576); backoff doubles per failure up to this cap, any completed check resets.

@@ -1,6 +1,13 @@
 import { beforeAll, TestRunner } from 'vitest'
 import type * as UpdaterModule from './updater'
 
+// Why here: every updater test file imports this module, and this fork disables automatic
+// background update checks by default (updater-state.ts's AUTOMATIC_UPDATE_CHECKS_ENABLED), but
+// this suite exercises that real scheduling mechanism unchanged. Set before any test file's
+// first `import('./updater')` so every `vi.resetModules()` re-evaluation of updater-state.ts
+// still picks it up.
+process.env.ORCA_TEST_AUTOMATIC_UPDATE_CHECKS = '1'
+
 /**
  * Pays `updater.ts`'s transform cost once per file, against `hookTimeout` instead of `testTimeout`.
  *
