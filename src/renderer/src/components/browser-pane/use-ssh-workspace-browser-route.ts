@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAppStore } from '@/store'
 import { getExecutionHostIdForWorktree } from '@/lib/worktree-runtime-owner'
 import { useWorktreeHostConnection } from '@/lib/worktree-host-connection-phase'
@@ -87,17 +87,33 @@ export function useSshWorkspaceBrowserRoute(
   // (e.g. PermitOpen allows their sites while the loopback probe is refused);
   // re-nagging every launch would train them to distrust the card.
   const skipProbe = attempt.skipProbe || probeSkippedTargetIds?.includes(targetId ?? '') === true
+  // Why a ref, not a dep-array trim: `awaitingHost` must stay a dependency (a host that never
+  // reaches 'connected' before failing outright still needs its first probe launched once
+  // it clears), so a doomed reconnect that cycles connecting/unavailable without ever
+  // connecting re-runs this effect on every cycle. Without this key, each cycle relaunched a
+  // real network probe (verified: 5 calls across 4 no-op cycles) even though nothing about
+  // what to prepare had changed — only a genuine change to one of these inputs may relaunch.
+  const launchedKeyRef = useRef<string | null>(null)
   useEffect(() => {
     if (!targetId) {
       setState({ kind: 'unrouted' })
+      launchedKeyRef.current = null
       return
     }
-    setState({ kind: 'preparing' })
-    // Why: the SSH connection is still being established, so prepare could only fail with
-    // ssh-unavailable; the connected transition above restarts it.
+    // Why before setState: the SSH connection is still being established (or re-attempting),
+    // so prepare could only fail with ssh-unavailable; the connected transition above restarts
+    // it. Bailing here first, rather than resetting `state` unconditionally, keeps an already-
+    // classified card's `state` intact across the wait — `effectiveState` below already renders
+    // 'preparing' whenever awaitingHost is true regardless of `state`.
     if (awaitingHost) {
       return
     }
+    const launchKey = `${targetId}:${browserProfileId}:${attempt.count}:${skipProbe}`
+    if (launchedKeyRef.current === launchKey) {
+      return
+    }
+    launchedKeyRef.current = launchKey
+    setState({ kind: 'preparing' })
     let cancelled = false
     window.api.browser
       .prepareSshWorkspacePartition({
