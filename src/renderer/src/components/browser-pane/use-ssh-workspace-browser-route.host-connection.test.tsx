@@ -104,6 +104,32 @@ describe('useSshWorkspaceBrowserRoute under a reconnecting SSH host', () => {
     expect(result.current.state.kind).toBe('ready')
   })
 
+  it('does not relaunch prepare on a reconnect loop that keeps failing before connecting', async () => {
+    // Why this matters: a target the app keeps retrying in the background (e.g. after an
+    // explicit disconnect) can cycle connecting/unavailable indefinitely without ever reaching
+    // 'connected'. Each cycle must not relaunch a real probe — nothing about what to prepare
+    // changed — or the card's error state churns for as long as the host keeps retrying.
+    setHost('unavailable')
+    mocks.prepare.mockRejectedValue(new Error('browser_local_route_ssh_unavailable'))
+    const { result, rerender } = renderHook(() => useSshWorkspaceBrowserRoute('wt-1', null))
+    await settle()
+    expect(mocks.prepare).toHaveBeenCalledOnce()
+    expect(result.current.state.kind).toBe('error')
+
+    for (let i = 0; i < 4; i++) {
+      setHost('connecting')
+      rerender()
+      await settle()
+      expect(result.current.state).toEqual({ kind: 'preparing' })
+
+      setHost('unavailable')
+      rerender()
+      await settle()
+      expect(result.current.state.kind).toBe('error')
+    }
+    expect(mocks.prepare).toHaveBeenCalledOnce()
+  })
+
   it('re-prepares a failed route when the host reconnects under a new generation', async () => {
     setHost('connected', 1)
     mocks.prepare.mockRejectedValueOnce(new Error('browser_local_route_ssh_unavailable'))
