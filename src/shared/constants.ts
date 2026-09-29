@@ -14,7 +14,7 @@ import { DEFAULT_WORKTREE_CARD_PROPERTIES } from './worktree/card-properties'
 import { DEFAULT_AGENTS_GROUP_BY, DEFAULT_AGENTS_READ_FILTER } from './agents-view-thread-filters'
 import { DEFAULT_USAGE_PERCENTAGE_DISPLAY } from './usage-percentage-display'
 import { DEFAULT_STATUS_BAR_USAGE_MODE } from './status-bar-usage-mode'
-import { buildDefaultSettings } from './default-global-settings'
+import { buildDefaultSettings, defaultAppFontFamily } from './default-global-settings'
 import { DEFAULT_SETUP_AGENT_STARTUP_POLICY } from './setup-agent-startup-policy'
 import { DEFAULT_BROWSER_PAGE_ZOOM_LEVEL } from './browser-page-zoom'
 
@@ -66,14 +66,7 @@ export const BROWSER_FAMILY_LABELS: Record<string, string> = {
 
 // Why: only the initial value shown in Settings; buildFontFamily() adds the real cross-platform fallback chain.
 function defaultTerminalFontFamily(): string {
-  const platform = typeof process !== 'undefined' ? process.platform : ''
-  if (platform === 'win32') {
-    return 'Cascadia Mono'
-  }
-  if (platform === 'linux') {
-    return 'DejaVu Sans Mono'
-  }
-  return 'SF Mono' // macOS default
+  return 'Fira Code'
 }
 
 export const getDefaultPrimarySelectionMiddleClickPaste = (
@@ -164,7 +157,7 @@ export function getDefaultWorkspaceDir(homeDir: string): string {
 export function getDefaultSettings(homedir: string): GlobalSettings {
   return buildDefaultSettings({
     workspaceDir: getDefaultWorkspaceDir(homedir),
-    appFontFamily: DEFAULT_APP_FONT_FAMILY,
+    appFontFamily: defaultAppFontFamily(),
     editorAutoSaveDelayMs: DEFAULT_EDITOR_AUTO_SAVE_DELAY_MS,
     primarySelectionMiddleClickPaste: getDefaultPrimarySelectionMiddleClickPaste(),
     primarySelectionDefaultedForLinux:

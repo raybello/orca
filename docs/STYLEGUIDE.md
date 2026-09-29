@@ -83,7 +83,7 @@ This keeps light/dark parity automatic.
 
 ## Typography
 
-- **Family:** `Geist` is loaded as a single variable woff2 (weight range 100–900). Always reach for `Geist` for sans, never `Inter` or system sans.
+- **Family:** Default UI font is platform-specific: `SF Pro` on macOS, `Segoe UI Variable` on Windows, `Geist` on Linux. `Geist` is bundled (single variable woff2, weight range 100–900) and acts as the cross-platform fallback; always reach for `var(--font-sans)` rather than hardcoding any family name.
 - **Mono:** `var(--font-mono)` — used for paths, terminal-adjacent UI, code, and anywhere monospace conveys "this is literal."
 - **Body letter-spacing:** `0.01em` (set globally on `body`). Don't override per component.
 - **Sizes:** Tailwind's default scale. Common sizes in this repo:

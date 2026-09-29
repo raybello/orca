@@ -50,7 +50,7 @@ describe('resolveEditorFontFamily', () => {
 describe('resolveEditorFontStack', () => {
   it('wraps a single family name with the monospace fallback chain', () => {
     const stack = resolveEditorFontStack({ editorFontFamily: 'JetBrains Mono' })
-    expect(stack.startsWith('"JetBrains Mono", "SF Mono"')).toBe(true)
+    expect(stack.startsWith('"JetBrains Mono", "Fira Code"')).toBe(true)
     expect(stack.endsWith(', monospace')).toBe(true)
   })
 
@@ -64,6 +64,6 @@ describe('resolveEditorFontStack', () => {
   })
 
   it('falls back to the full chain when no font is set', () => {
-    expect(resolveEditorFontStack({})).toMatch(/^"SF Mono", .*, monospace$/)
+    expect(resolveEditorFontStack({})).toMatch(/^"Fira Code", .*, monospace$/)
   })
 })
