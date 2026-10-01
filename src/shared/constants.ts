@@ -25,6 +25,10 @@ import {
 
 export { DEFAULT_STATUS_BAR_ITEMS } from './status-bar-defaults'
 export {
+  getDefaultPrimarySelectionMiddleClickPaste,
+  getDefaultTerminalRightClickToPaste
+} from './terminal-platform-defaults'
+export {
   COMPACT_WORKTREE_CARD_PROPERTIES,
   DEFAULT_WORKTREE_CARD_PROPERTIES,
   TASK_WORKTREE_CARD_PROPERTIES,
@@ -64,19 +68,6 @@ export const BROWSER_FAMILY_LABELS: Record<string, string> = {
   safari: 'Safari',
   manual: 'File'
 }
-
-// Why: only the initial value shown in Settings; buildFontFamily() adds the real cross-platform fallback chain.
-function defaultTerminalFontFamily(): string {
-  return 'Fira Code'
-}
-
-export const getDefaultPrimarySelectionMiddleClickPaste = (
-  platform = typeof process !== 'undefined' ? process.platform : ''
-): boolean => platform === 'linux' || platform === 'darwin'
-
-export const getDefaultTerminalRightClickToPaste = (
-  platform = typeof process !== 'undefined' ? process.platform : ''
-): boolean => platform === 'win32'
 
 /** Why: ProseMirror renders the whole document without virtualization. After the
  *  parser/highlighter work in #17134/#17147/#17158, M-series Electron measurements

@@ -84,6 +84,7 @@ function seedEmptyFolderWorkspace(): void {
     markWorktreeVisited: vi.fn(),
     recordWorktreeVisit: vi.fn(),
     revealWorktreeInSidebar: vi.fn()
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test helper passes mock functions alongside state; full store type doesn't include them but setState accepts a partial at runtime.
   } as unknown as Partial<ReturnType<typeof useAppStore.getState>>)
 }
 
