@@ -33,16 +33,16 @@ export function getFallbackTerminalFonts(): string[] {
   const normalizedPlatform = platform.toLowerCase()
 
   if (normalizedPlatform.includes('mac')) {
-    return ['SF Mono', 'Menlo', 'Monaco', 'JetBrains Mono', 'Fira Code']
+    return ['Fira Code', 'SF Mono', 'Menlo', 'Monaco', 'JetBrains Mono']
   }
 
   if (normalizedPlatform.includes('win')) {
-    return ['Cascadia Mono', 'Consolas', 'Lucida Console', 'JetBrains Mono', 'Fira Code']
+    return ['Fira Code', 'Cascadia Mono', 'Consolas', 'Lucida Console', 'JetBrains Mono']
   }
 
   return [
-    'JetBrains Mono',
     'Fira Code',
+    'JetBrains Mono',
     'DejaVu Sans Mono',
     'Liberation Mono',
     'Ubuntu Mono',

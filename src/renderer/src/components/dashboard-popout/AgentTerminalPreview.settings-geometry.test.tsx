@@ -189,16 +189,16 @@ it.each([
   },
   {
     updates: { terminalLineHeight: 1.5 },
-    cols: 60,
+    cols: 50,
     rows: 10,
-    scale: 'scale(0.75)',
-    anchor: 'bottom left'
+    scale: 'scale(0.625)',
+    anchor: 'top left'
   },
   {
     updates: { terminalLigatures: 'on' },
-    cols: 60,
+    cols: 50,
     rows: 15,
-    scale: 'scale(0.75)',
+    scale: 'scale(0.625)',
     anchor: 'top left'
   }
 ] satisfies {
@@ -212,7 +212,7 @@ it.each([
   async ({ updates, cols, rows, scale, anchor }) => {
     render(<AgentTerminalPreview ptyId="pty-1" />)
     await settleGeometry()
-    expect(fit).toHaveBeenLastCalledWith('pty-1', 60, 15)
+    expect(fit).toHaveBeenLastCalledWith('pty-1', 50, 15)
     await act(async () => useAppStore.getState().updateSettings(updates))
     await settleGeometry()
 
