@@ -1,6 +1,7 @@
 // Cross-platform monospace chain: browsers skip fonts absent on the current OS, so listing all is safe.
 // Nerd Fonts come last to cover PUA glyphs (U+E000–U+F8FF) from OMP/Powerline that standard monospace fonts lack.
 const FALLBACK_FONTS = [
+  'Fira Code', // default programming font with ligatures
   'SF Mono', // macOS 10.12+
   'Menlo', // macOS (older)
   'Monaco', // macOS (legacy)

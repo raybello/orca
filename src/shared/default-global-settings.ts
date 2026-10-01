@@ -18,6 +18,19 @@ import {
 import { DEFAULT_SOURCE_CONTROL_GROUP_ORDER } from './source-control-group-order'
 import { DESKTOP_TERMINAL_SCROLLBACK_ROWS_DEFAULT } from './terminal-scrollback-policy'
 
+// Why: SF Pro is a macOS system font unavailable on other platforms; Geist (bundled) covers Linux.
+export function defaultAppFontFamily(
+  platform = typeof process !== 'undefined' ? process.platform : ''
+): string {
+  if (platform === 'win32') {
+    return 'Segoe UI Variable'
+  }
+  if (platform === 'linux') {
+    return 'Geist'
+  }
+  return 'SF Pro'
+}
+
 export function buildDefaultSettings(args: {
   workspaceDir: string
   appFontFamily: string
@@ -71,8 +84,7 @@ export function buildDefaultSettings(args: {
     terminalTuiScrollSensitivityDefaultedToOne: true,
     // Why: "auto" uses WebGL when supported, falling back to DOM on renderer failure or software/unknown GPU.
     terminalGpuAcceleration: 'auto',
-    // Why 'auto': enable ligatures only for known ligature fonts, never forced. Resolver in shared/terminal-ligatures.ts.
-    terminalLigatures: 'auto',
+    terminalLigatures: 'on',
     // Why on: the addon is lazy-loaded off the critical path and only creates
     // canvas layers once a pane receives an image; parser/decoder setup still has overhead.
     terminalInlineImages: true,
