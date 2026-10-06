@@ -388,7 +388,30 @@
             "cloud/**"
           ],
           "rules": [
-            "eslint/curly"
+            "eslint/curly",
+            "eslint/max-lines",
+            "eslint/prefer-template",
+            "typescript/array-type",
+            "unicorn/consistent-existence-index-check",
+            "unicorn/no-array-reverse",
+            "unicorn/prefer-array-find",
+            "unicorn/prefer-import-meta-properties"
+          ]
+        },
+        {
+          "files": [
+            "mobile/**"
+          ],
+          "rules": [
+            "eslint/prefer-template"
+          ]
+        },
+        {
+          "files": [
+            "src/renderer/src/components/editor/useLocalImageSrc.test.ts"
+          ],
+          "rules": [
+            "react-doctor/no-prop-callback-in-render"
           ]
         }
       ]

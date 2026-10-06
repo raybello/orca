@@ -179,7 +179,7 @@ it('preserves the existing trust boundary for an object missing notification fie
 it.each(['not JSON', 'undefined', 'null', '[]'])(
   'preserves invalid payload rejection and rolls back the lease for %s',
   async (payload) => {
-    const { db, store } = await fixture()
+    const { db, store } = await fixture({ ownDatabase: true })
     await store.accept('host', 'phone', notification(1))
     await db.query('UPDATE push_delivery_batches SET payload_json = ?', [payload])
     const [before] = await db.query('SELECT * FROM push_delivery_batches')
