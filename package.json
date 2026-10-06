@@ -382,6 +382,14 @@
           "rules": [
             "react-doctor/no-ref-current-in-render"
           ]
+        },
+        {
+          "files": [
+            "cloud/**"
+          ],
+          "rules": [
+            "eslint/curly"
+          ]
         }
       ]
     },

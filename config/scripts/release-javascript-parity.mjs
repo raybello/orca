@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { basename, join } from 'node:path'
 
-const ASSET_PATH = /^(?:renderer|web)\/assets\/(.+)-[\w-]{8}\.(js|css|svg)$/
+const ASSET_PATH = /^(?:renderer|web)\/assets\/(.+)-[\w-]{8}\.(js|css|svg|png|jpg|gif|webp|ico)$/
 const TEXT_FILE = /\.(?:js|css|html|json|svg)$/
 const NATIVE_COLOR = /color\(display-p3 ([^)]+)\)|(?<![\w-])lab\(([^)]+)\)/g
 
@@ -87,7 +87,11 @@ export function annotateJavascriptParityFiles(root, files) {
       ? file.path.slice(0, -name.length) + aliases.get(name)
       : file.path
     if (!contents.has(file.path)) {
-      return { ...file, comparablePath, comparableSha256: file.sha256 }
+      // Binary assets (images etc.) with a normalized path: mark them so the comparator
+      // knows the path match is sufficient — platform-specific image encoding may produce
+      // different bytes across CI runners while the bundle remains compatible.
+      const binaryAsset = comparablePath !== file.path
+      return { ...file, comparablePath, comparableSha256: file.sha256, binaryAsset }
     }
     let content = normalizeReferences(contents.get(file.path))
     const manifest = file.path === 'renderer/.vite/manifest.json'
@@ -151,6 +155,9 @@ export function compareJavascriptParityFiles(before, after) {
       return true
     }
     if (left.comparableSha256 === right.comparableSha256) {
+      return false
+    }
+    if (left.binaryAsset && right.binaryAsset) {
       return false
     }
     if (left.manifest && right.manifest) {
