@@ -14,6 +14,7 @@ export const AGENT_SESSION_FAILURE_COPY = {
   providerStartFailed: '{{agent}} stopped before it finished starting.',
   runCommandAgain: 'Run /{{command}} again.',
   sendToTryAgain: 'Send your message to try again.',
+  sendAgainToTryOnceMore: 'Send your message again to try once more.',
   couldNotStart: "{{agent}} couldn't start.",
   couldNotRestart: "{{agent}} couldn't restart.",
   terminalAgentHoldsChat: TERMINAL_AGENT_HOLDS_CHAT,
@@ -29,6 +30,8 @@ export const AGENT_SESSION_FAILURE_COPY = {
   accountSwitchInProgress: 'A Claude account switch is in progress. Try again after it finishes.',
   managedAccountUnsupported:
     'While a Claude account is added in WSL, Claude chats need a Windows Claude account.',
+  launchFolderMissing:
+    'The folder this chat ran in no longer exists. Restore it to continue this chat.',
   chooseClaudeAccount: 'Choose or add one in Claude Accounts settings.',
   chooseClaudeAccountThenRunCommand:
     'Choose or add one in Claude Accounts settings, then run /{{command}} again.',
@@ -80,7 +83,8 @@ export const AGENT_SESSION_FAILURE_COPY = {
   hostStopped: '{{agent}} never finished starting, so Orca stopped it.',
   providerRateLimited: '{{agent}} is rate-limited and retrying.',
   providerRetrying: '{{agent}} hit a temporary problem and is retrying.',
-  providerRetryingQuoted: '{{agent}} is retrying: {{detail}}.'
+  providerRetryingQuoted: '{{agent}} is retrying: {{detail}}.',
+  previousExitUnverifiable: "Couldn't stop {{agent}} from before."
 } as const
 
 export type AgentSessionFailureCopyId = keyof typeof AGENT_SESSION_FAILURE_COPY

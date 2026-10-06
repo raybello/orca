@@ -26,7 +26,11 @@ import {
 } from './native-chat-turn-grouping'
 import type { NativeChatRole } from './native-chat-types'
 import { isStructuredAgentSessionCommandTurn } from './structured-agent-session-command-entry'
-import { liveStructuredAgentSessionTurnScope } from './structured-agent-session-live-turn'
+import {
+  liveStructuredAgentSessionTurnScope,
+  runningStructuredAgentSessionTurnScope
+} from './structured-agent-session-live-turn'
+import type { AgentSessionLatestTurn } from './agent-session-wire'
 
 /** Whether the host writing this journal states each row's turn. Only a host that runs `/compact`
  *  as a turn of the send path does, so this is also how a client tells that host from an older one. */
@@ -37,6 +41,10 @@ export function hostStatesTurnScopes(items: readonly AgentJournalRenderItem[]): 
 export type NativeChatTurnJournal = {
   items: readonly AgentJournalRenderItem[]
   submissions: readonly AgentJournalSubmission[]
+  /** The host's newest turn record: it names the live turn, and anchors it while it runs when the
+   *  record is not loaded, so the turn's loaded rows still draw under its bar. Absent from older
+   *  hosts. */
+  latestTurn?: AgentSessionLatestTurn | null
 }
 
 /**
@@ -48,7 +56,9 @@ export type NativeChatTurnJournal = {
  */
 export function structuredAgentTurnAnchors(
   items: readonly AgentJournalRenderItem[],
-  submissions: readonly AgentJournalSubmission[] = []
+  submissions: readonly AgentJournalSubmission[] = [],
+  /** Anchored too while it runs with its record above the loaded rows; nothing loaded precedes it. */
+  latestTurn?: AgentSessionLatestTurn | null
 ): ReadonlyMap<string, string> {
   const userItemIds = new Set(
     items.flatMap((item) =>
@@ -89,6 +99,13 @@ export function structuredAgentTurnAnchors(
     )
     inFlightSinceLastTurn = null
   }
+  // Only while running: an ended turn's tail would otherwise regroup when the next turn opens.
+  if (latestTurn?.turn.state === 'running' && !anchors.has(latestTurn.itemId)) {
+    anchors.set(
+      latestTurn.itemId,
+      anchorOf(latestTurn.itemId, latestTurn.turn, userItemIds, aliases, null, null)
+    )
+  }
   return anchors
 }
 
@@ -123,31 +140,41 @@ export type NativeChatTurnMembership = {
   /** Row indexes in the order the transcript draws them (`nativeChatTurnDrawOrder`), or null when
    *  that is the order given. */
   drawOrder: readonly number[] | null
+  /** The live turn's key while its record is above the loaded rows: those rows are only its tail,
+   *  so nothing may total them as the whole turn. */
+  partialTurnKey?: string
 }
+
+type NativeChatTurnMember = { id: string; role: NativeChatRole; unsent?: true }
 
 /**
  * Places each row in its turn. A user entry that anchors a turn, or is scoped to none, keys
  * itself; one delivered into a running turn (a steer) takes that turn's key. A host that states no
  * scope is read by journal order instead (`nativeChatJournalOrderTurnKeys`). `opensTurn` narrows
- * which rows may key themselves, for rows that interleave a subagent's with the conversation's.
+ * which rows may key themselves, for rows that interleave a subagent's with the conversation's. A
+ * message shown as not sent is in no turn, so it is never the live one.
  */
 export function nativeChatTurnMembership(
-  messages: readonly { id: string; role: NativeChatRole }[],
+  messages: readonly NativeChatTurnMember[],
   journal?: NativeChatTurnJournal | null,
   opensTurn: NativeChatOpensTurn = nativeChatUserRowOpensTurn
 ): NativeChatTurnMembership {
+  const opens: NativeChatOpensTurn = (message) => !isUnsent(message) && opensTurn(message)
   if (!journal) {
-    const turnKeys = nativeChatRowTurnKeys(messages, null, opensTurn)
+    const turnKeys = withoutUnsent(messages, nativeChatRowTurnKeys(messages, null, opens))
     return { turnKeys, liveTurnKey: newestUserTurnKey(messages, turnKeys), drawOrder: null }
   }
-  const anchors = structuredAgentTurnAnchors(journal.items, journal.submissions)
-  const running = liveStructuredAgentSessionTurnScope(journal.items)
+  const anchors = structuredAgentTurnAnchors(journal.items, journal.submissions, journal.latestTurn)
+  const running = runningStructuredAgentSessionTurnScope(journal)
   if (!hostStatesTurnScopes(journal.items)) {
     const recordKeys = namedRecordKeys(journal.items, anchors)
-    const turnKeys = nativeChatRowTurnKeys(
+    const turnKeys = withoutUnsent(
       messages,
-      nativeChatJournalOrderTurnKeys(journal.items, recordKeys),
-      opensTurn
+      nativeChatRowTurnKeys(
+        messages,
+        nativeChatJournalOrderTurnKeys(journal.items, recordKeys),
+        opens
+      )
     )
     const runningNamed = running.kind === 'turn' ? recordKeys.get(running.turnItemId) : null
     return {
@@ -159,7 +186,11 @@ export function nativeChatTurnMembership(
   const runningKey = running.kind === 'turn' ? anchors.get(running.turnItemId) : undefined
   const anchoring = new Set(anchors.values())
   const scopes = new Map(journal.items.map((item) => [item.itemId, item.turnScope]))
+  const runningRecordLoaded = running.kind === 'turn' && scopes.has(running.turnItemId)
   const turnKeys = messages.map((message) => {
+    if (message.unsent === true) {
+      return undefined
+    }
     const scope = scopes.get(message.id)
     const turnKey =
       scope?.kind === 'turn' && scope.turnItemId ? anchors.get(scope.turnItemId) : undefined
@@ -171,8 +202,21 @@ export function nativeChatTurnMembership(
   return {
     turnKeys,
     liveTurnKey: runningKey ?? newestUserTurnKey(messages, turnKeys),
-    drawOrder: nativeChatTurnDrawOrder(messages, turnKeys, anchoring)
+    drawOrder: nativeChatTurnDrawOrder(messages, turnKeys, anchoring),
+    ...(runningKey !== undefined && !runningRecordLoaded ? { partialTurnKey: runningKey } : {})
   }
+}
+
+function isUnsent(message: { id: string; role: NativeChatRole }): boolean {
+  return 'unsent' in message && message.unsent === true
+}
+
+/** An unsent row neither keys a turn nor inherits the one before it. */
+function withoutUnsent(
+  messages: readonly NativeChatTurnMember[],
+  turnKeys: (string | undefined)[]
+): (string | undefined)[] {
+  return turnKeys.map((turnKey, index) => (messages[index]?.unsent === true ? undefined : turnKey))
 }
 
 /** Each root record's anchor, or null for a record that names no opener (only older hosts write
@@ -201,18 +245,34 @@ function anchoringUserItems(recordKeys: ReadonlyMap<string, string | null>): Rea
 /**
  * The rows accepted but not yet handed over while a conversation command's turn runs, as a message
  * sent during `/compact` is: the host hands nothing over until the command ends, so they draw after
- * that turn's live activity. Any other running turn takes a send within moments, so it stays put.
+ * that turn's live activity. Any other running turn takes a send within moments, so it stays put,
+ * unless a person's Stop is ending it (`stopping`): the host holds a send made then until it ends,
+ * so those, and this client's own sends made then that it has not recorded yet, draw after the
+ * live activity too. A send made before the Stop stays where it is.
  */
 export function nativeChatMessagesWaitingBehindLiveTurn(
-  messages: readonly { id: string; queued?: true }[],
-  items: readonly AgentJournalRenderItem[] | null | undefined
+  messages: readonly { id: string; queued?: true; sentWhileStopping?: true }[],
+  items: readonly AgentJournalRenderItem[] | null | undefined,
+  stopping = false
 ): ReadonlySet<string> {
-  const queued = messages.filter((message) => message.queued === true)
+  const waits = (message: (typeof messages)[number]): boolean =>
+    message.queued === true || (stopping && message.sentWhileStopping === true)
+  const waiting = messages.filter(waits)
   return new Set(
-    queued.length > 0 && items && commandTurnRunning(items)
-      ? queued.map((message) => message.id)
+    waiting.length > 0 && items && (stopping || commandTurnRunning(items))
+      ? waiting.map((message) => message.id)
       : []
   )
+}
+
+/** Whether a row belongs to the turn running now. Liveness is the owning turn's, not the newest
+ *  prompt's: a running turn's rows stay live while a newer message waits behind it. */
+export function isNativeChatRowInLiveWorkingTurn(
+  turnKey: string | undefined,
+  liveTurnKey: string | undefined,
+  working: boolean
+): boolean {
+  return working && (liveTurnKey ? turnKey === liveTurnKey : turnKey === undefined)
 }
 
 function commandTurnRunning(items: readonly AgentJournalRenderItem[]): boolean {
@@ -225,9 +285,11 @@ function commandTurnRunning(items: readonly AgentJournalRenderItem[]): boolean {
 }
 
 function newestUserTurnKey(
-  messages: readonly { role: NativeChatRole }[],
+  messages: readonly NativeChatTurnMember[],
   turnKeys: readonly (string | undefined)[]
 ): string | undefined {
-  const index = messages.findLastIndex((message) => message.role === 'user')
+  const index = messages.findLastIndex(
+    (message) => message.role === 'user' && message.unsent !== true
+  )
   return index === -1 ? undefined : turnKeys[index]
 }

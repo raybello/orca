@@ -28,6 +28,7 @@ import {
   hasPersistedStructuredAgentSessionStore,
   stopStructuredAgentSessionRuntime
 } from './structured-agent-session-runtime'
+import { createStructuredAgentSessionLogger } from '../native-chat/agent-session-wire/structured-agent-session-logger'
 
 const HOST_ID = 'local'
 
@@ -258,6 +259,7 @@ describe('structured agent-session runtime install', () => {
   it('holds stop until the model catalog has written its coalesced save', async () => {
     stateDirectory = await mkdtemp(join(tmpdir(), 'orca-structured-runtime-'))
     await ensureStructuredAgentSessionHost({
+      logger: createStructuredAgentSessionLogger(),
       stateDirectory,
       hostId: HOST_ID,
       claimKeyId: 'key-1',
@@ -284,7 +286,7 @@ describe('structured agent-session runtime install', () => {
     expect(stopped).toBe(true)
   })
 
-  it('does not infer Windows process identity support from an injected reader', async () => {
+  it('supports native Windows creation without the process-table addon', async () => {
     stateDirectory = await mkdtemp(join(tmpdir(), 'orca-structured-runtime-'))
     const originalPlatform = process.platform
     const location: AgentSessionExecutionLocation = {
@@ -297,6 +299,7 @@ describe('structured agent-session runtime install', () => {
     __setWindowsProcessTreeLoaderForTests(() => null)
     try {
       const host = await ensureStructuredAgentSessionHost({
+        logger: createStructuredAgentSessionLogger(),
         stateDirectory,
         hostId: HOST_ID,
         claimKeyId: 'key-1',
@@ -306,7 +309,9 @@ describe('structured agent-session runtime install', () => {
         readProcessStartTime: async () => 1_700_000_000_000
       })
 
-      expect(host.supportsCreate(location, 'codex')).toBe(false)
+      // No addon means no creation times; chat no longer depends on them.
+      expect(host.supportsCreate(location, 'codex')).toBe(true)
+      expect(host.supportsCreate(location, 'claude')).toBe(true)
     } finally {
       __setWindowsProcessTreeLoaderForTests()
       Object.defineProperty(process, 'platform', { configurable: true, value: originalPlatform })
