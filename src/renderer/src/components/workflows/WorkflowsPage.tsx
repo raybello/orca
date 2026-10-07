@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import WorkflowList from './WorkflowList'
 import WorkflowCanvas from './WorkflowCanvas'
 import WorkflowNodeEditorPanel from './WorkflowNodeEditorPanel'
@@ -9,6 +9,20 @@ export default function WorkflowsPage(): React.JSX.Element {
   const [canvasFocused, setCanvasFocused] = useState(false)
   const [selectedWorkflow, setSelectedWorkflow] = useState<AgentWorkflow | null>(null)
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
+
+  const selectedWorkflowId = selectedWorkflow?.id ?? null
+  useEffect(() => {
+    if (!selectedWorkflowId) {
+      return
+    }
+    const unsub = window.api.workflows.onChanged(({ workflows }) => {
+      const updated = workflows.find((w) => w.id === selectedWorkflowId)
+      if (updated) {
+        setSelectedWorkflow(updated)
+      }
+    })
+    return unsub
+  }, [selectedWorkflowId])
 
   return (
     <div className="flex flex-col h-full min-h-0 overflow-hidden bg-background">
