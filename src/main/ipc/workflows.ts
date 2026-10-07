@@ -22,7 +22,7 @@ function parseCursorAgentModels(stdout: string): WorkflowModel[] {
     const dashIdx = line.indexOf(' - ')
     const id = dashIdx !== -1 ? line.slice(0, dashIdx).trim() : line
     const label = dashIdx !== -1 ? line.slice(dashIdx + 3).trim() : line
-    if (!id || id.toLowerCase() === 'available models' || seen.has(id)) {
+    if (!id || !/^[a-z0-9][a-z0-9._-]*$/i.test(id) || seen.has(id)) {
       continue
     }
     seen.add(id)
