@@ -22,9 +22,10 @@ function buildAgentArgs(
   if (agentId === 'codex') {
     return { program: 'codex', args: ['--quiet', prompt] }
   }
+  // cursor-agent -p runs non-interactively (print mode), prompt is a positional arg
   return {
     program: 'cursor-agent',
-    args: ['--prompt', prompt, ...(structuredOutput ? ['--output-format', 'json'] : []), '--yolo']
+    args: ['-p', ...(structuredOutput ? ['--output-format', 'json'] : []), prompt]
   }
 }
 
