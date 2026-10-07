@@ -5,10 +5,15 @@ import { assertSshMutationExpectation } from '../../ssh/ssh-connection-generatio
 import { requireSshFilesystemProvider } from '../../providers/ssh-filesystem-dispatch'
 import { tryDeleteWslUncPath } from '../../wsl-unc-delete'
 import { checkoutReadOnlyPerforceFileBeforeWrite } from '../../perforce/perforce-checkout-on-write'
-import { authorizeExternalPath, resolveAuthorizedPath } from '../filesystem-auth'
+import type { LocalFileAccess } from '../../../shared/local-file-access'
+import {
+  resolveDesktopAuthorizedPath,
+  resolveLocalWriteRequestPath
+} from '../local-file-access-resolution'
 import { isENOENT } from '../filesystem-path-containment'
 import { registerFilesystemMutationHandlers } from '../filesystem-mutations'
 import type { FilesystemHandlerContext } from './filesystem-handler-context'
+import { assertLocalWriteTargetIsRegularFile } from './local-regular-file-read'
 
 export function registerFilesystemWriteHandlers(context: FilesystemHandlerContext): void {
   const { store } = context
@@ -17,7 +22,12 @@ export function registerFilesystemWriteHandlers(context: FilesystemHandlerContex
     'fs:writeFile',
     async (
       _event,
-      args: { filePath: string; content: string; connectionId?: string } & SshMutationExpectation
+      args: {
+        filePath: string
+        content: string
+        connectionId?: string
+        access?: LocalFileAccess
+      } & SshMutationExpectation
     ): Promise<void> => {
       assertSshMutationExpectation(
         args.connectionId,
@@ -30,7 +40,7 @@ export function registerFilesystemWriteHandlers(context: FilesystemHandlerContex
         await checkoutReadOnlyPerforceFileBeforeWrite(store, args.connectionId, args.filePath)
         return provider.writeFile(args.filePath, args.content)
       }
-      const filePath = await resolveAuthorizedPath(args.filePath, store)
+      const filePath = await resolveLocalWriteRequestPath(args.filePath, args.access, store)
       try {
         const fileStats = await lstat(filePath)
         if (fileStats.isDirectory()) {
@@ -42,6 +52,7 @@ export function registerFilesystemWriteHandlers(context: FilesystemHandlerContex
         }
       }
       await checkoutReadOnlyPerforceFileBeforeWrite(store, null, filePath)
+      await assertLocalWriteTargetIsRegularFile(filePath)
       await writeFile(filePath, args.content, 'utf-8')
     }
   )
@@ -67,7 +78,7 @@ export function registerFilesystemWriteHandlers(context: FilesystemHandlerContex
         return provider.deletePath(args.targetPath, args.recursive)
       }
       // Why: preserve the symlink so we delete the link, not its target (realpath would trash the real file, possibly outside all roots).
-      const targetPath = await resolveAuthorizedPath(args.targetPath, store, {
+      const targetPath = await resolveDesktopAuthorizedPath(args.targetPath, store, {
         preserveSymlink: true
       })
       // Why: WSL UNC targets have no Recycle Bin (shell.trashItem throws), so hard-delete via `rm` inside the distro (issue #6415).
@@ -87,8 +98,4 @@ export function registerFilesystemWriteHandlers(context: FilesystemHandlerContex
   )
 
   registerFilesystemMutationHandlers(store)
-
-  ipcMain.handle('fs:authorizeExternalPath', (_event, args: { targetPath: string }): void => {
-    authorizeExternalPath(args.targetPath)
-  })
 }

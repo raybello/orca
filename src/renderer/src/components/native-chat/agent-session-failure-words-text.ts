@@ -27,6 +27,11 @@ const PIECES: Record<AgentSessionFailureCopyId, (values: AgentSessionFailureCopy
       ),
     sendToTryAgain: () =>
       translate('components.native-chat.failureWords.sendToTryAgain', COPY.sendToTryAgain),
+    sendAgainToTryOnceMore: () =>
+      translate(
+        'components.native-chat.failureWords.sendAgainToTryOnceMore',
+        COPY.sendAgainToTryOnceMore
+      ),
     couldNotStart: (values) =>
       translate('components.native-chat.failureWords.couldNotStart', COPY.couldNotStart, values),
     couldNotRestart: (values) =>
@@ -72,6 +77,11 @@ const PIECES: Record<AgentSessionFailureCopyId, (values: AgentSessionFailureCopy
       translate(
         'components.native-chat.failureWords.managedAccountUnsupported',
         COPY.managedAccountUnsupported
+      ),
+    launchFolderMissing: () =>
+      translate(
+        'components.native-chat.failureWords.launchFolderMissing',
+        COPY.launchFolderMissing
       ),
     chooseClaudeAccount: () =>
       translate(
@@ -226,6 +236,12 @@ const PIECES: Record<AgentSessionFailureCopyId, (values: AgentSessionFailureCopy
       translate(
         'components.native-chat.failureWords.providerRetryingQuoted',
         COPY.providerRetryingQuoted,
+        values
+      ),
+    previousExitUnverifiable: (values) =>
+      translate(
+        'components.native-chat.failureWords.previousExitUnverifiable',
+        COPY.previousExitUnverifiable,
         values
       )
   }

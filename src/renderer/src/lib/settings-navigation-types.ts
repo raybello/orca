@@ -21,6 +21,7 @@ const SETTINGS_NAV_TARGETS = [
   'perforce',
   'tasks',
   'appearance',
+  'chat',
   'input',
   'floating-workspace',
   'terminal',
