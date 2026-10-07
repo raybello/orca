@@ -34,6 +34,7 @@ export type PythonScriptData = {
 
 export type AgentCallData = {
   agentId: TuiAgent
+  model?: string
   prompt: string
   structuredOutputSchema: string | null
   workingDirectory: string

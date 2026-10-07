@@ -11,21 +11,23 @@ export type AgentNodeResult = {
 function buildAgentArgs(
   agentId: TuiAgent,
   prompt: string,
-  structuredOutput: boolean
+  structuredOutput: boolean,
+  model?: string
 ): { program: string; args: string[] } {
+  const modelArgs = model ? ['--model', model] : []
   if (agentId === 'claude') {
     return {
       program: 'claude',
-      args: ['-p', prompt, ...(structuredOutput ? ['--output-format', 'json'] : [])]
+      args: ['-p', ...modelArgs, ...(structuredOutput ? ['--output-format', 'json'] : []), prompt]
     }
   }
   if (agentId === 'codex') {
-    return { program: 'codex', args: ['--quiet', prompt] }
+    return { program: 'codex', args: ['--quiet', ...modelArgs, prompt] }
   }
   // cursor-agent -p runs non-interactively (print mode), prompt is a positional arg
   return {
     program: 'cursor-agent',
-    args: ['-p', ...(structuredOutput ? ['--output-format', 'json'] : []), prompt]
+    args: ['-p', ...modelArgs, ...(structuredOutput ? ['--output-format', 'json'] : []), prompt]
   }
 }
 
@@ -36,7 +38,8 @@ export async function runAgentCallNode(
   const { program, args } = buildAgentArgs(
     data.agentId,
     resolvedPrompt,
-    data.structuredOutputSchema !== null
+    data.structuredOutputSchema !== null,
+    data.model
   )
   const result = await runProcess({
     program,
