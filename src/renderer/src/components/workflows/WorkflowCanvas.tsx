@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Maximize2, Minimize2, Plus, Workflow } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { translate } from '@/i18n/i18n'
@@ -135,6 +135,7 @@ export default function WorkflowCanvas({
   selectedNodeId
 }: Props): React.JSX.Element {
   const [showAddMenu, setShowAddMenu] = useState(false)
+  const [connectingFrom, setConnectingFrom] = useState<string | null>(null)
   const dragRef = useRef<{
     nodeId: string
     startX: number
@@ -142,6 +143,19 @@ export default function WorkflowCanvas({
     origX: number
     origY: number
   } | null>(null)
+
+  useEffect(() => {
+    if (!connectingFrom) {
+      return
+    }
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') {
+        setConnectingFrom(null)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [connectingFrom])
 
   if (workflow === null) {
     return (
@@ -152,6 +166,33 @@ export default function WorkflowCanvas({
         </span>
       </div>
     )
+  }
+
+  async function connectNodes(sourceId: string, targetId: string): Promise<void> {
+    if (!workflow || sourceId === targetId) {
+      return
+    }
+    const alreadyExists = workflow.edges.some(
+      (e) => e.sourceNodeId === sourceId && e.targetNodeId === targetId
+    )
+    if (alreadyExists) {
+      return
+    }
+    await window.api.workflows.update(workflow.id, {
+      edges: [
+        ...workflow.edges,
+        { id: createBrowserUuid(), sourceNodeId: sourceId, targetNodeId: targetId }
+      ]
+    })
+  }
+
+  async function deleteEdge(edgeId: string): Promise<void> {
+    if (!workflow) {
+      return
+    }
+    await window.api.workflows.update(workflow.id, {
+      edges: workflow.edges.filter((e) => e.id !== edgeId)
+    })
   }
 
   async function addNode(type: WorkflowNodeType): Promise<void> {
@@ -247,14 +288,23 @@ export default function WorkflowCanvas({
         </div>
       )}
       <div
-        className="relative w-full h-full"
+        className={cn('relative w-full h-full', connectingFrom && 'cursor-crosshair')}
         onClick={() => {
+          if (connectingFrom) {
+            setConnectingFrom(null)
+            return
+          }
           onNodeSelect(null)
           setShowAddMenu(false)
         }}
       >
-        {/* edges */}
-        <svg className="absolute inset-0 w-full h-full pointer-events-none">
+        {connectingFrom && (
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 bg-primary text-primary-foreground text-[11px] px-2 py-1 rounded shadow pointer-events-none">
+            Right-click a target node to connect — Esc to cancel
+          </div>
+        )}
+        {/* edges — pointer-events enabled so left-click deletes */}
+        <svg className="absolute inset-0 w-full h-full" style={{ pointerEvents: 'none' }}>
           {workflow.edges.map((edge) => {
             const src = workflow.nodes.find((n) => n.id === edge.sourceNodeId)
             const tgt = workflow.nodes.find((n) => n.id === edge.targetNodeId)
@@ -265,18 +315,33 @@ export default function WorkflowCanvas({
             const y1 = src.pos.y + 24
             const x2 = tgt.pos.x + 80
             const y2 = tgt.pos.y + 24
+            const mx = (x1 + x2) / 2
             return (
-              <line
+              <g
                 key={edge.id}
-                x1={x1}
-                y1={y1}
-                x2={x2}
-                y2={y2}
-                stroke="currentColor"
-                strokeWidth={1.5}
-                strokeDasharray="4 2"
-                className="text-border"
-              />
+                style={{ pointerEvents: 'all', cursor: 'pointer' }}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  void deleteEdge(edge.id)
+                }}
+              >
+                {/* wide transparent hit area */}
+                <path
+                  d={`M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`}
+                  fill="none"
+                  stroke="transparent"
+                  strokeWidth={12}
+                />
+                {/* visible bezier edge */}
+                <path
+                  d={`M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.5}
+                  strokeDasharray="4 2"
+                  className="text-border hover:text-destructive transition-colors"
+                />
+              </g>
             )
           })}
         </svg>
@@ -285,15 +350,32 @@ export default function WorkflowCanvas({
             id={`wf-node-${node.id}`}
             key={node.id}
             className={cn(
-              'absolute select-none cursor-move rounded-lg border-2 px-3 py-2 shadow-sm transition-shadow min-w-[160px]',
+              'absolute select-none rounded-lg border-2 px-3 py-2 shadow-sm transition-shadow min-w-[160px]',
+              connectingFrom ? 'cursor-crosshair' : 'cursor-move',
               NODE_TYPE_COLORS[node.type],
-              selectedNodeId === node.id && 'ring-2 ring-primary ring-offset-1'
+              selectedNodeId === node.id && 'ring-2 ring-primary ring-offset-1',
+              connectingFrom === node.id && 'ring-2 ring-primary ring-offset-2 opacity-60'
             )}
             style={{ left: node.pos.x, top: node.pos.y }}
-            onMouseDown={(e) => handleMouseDown(e, node.id)}
+            onMouseDown={(e) => {
+              if (!connectingFrom) {
+                handleMouseDown(e, node.id)
+              }
+            }}
             onClick={(e) => {
               e.stopPropagation()
+              if (connectingFrom) {
+                void connectNodes(connectingFrom, node.id)
+                setConnectingFrom(null)
+                return
+              }
               onNodeSelect(node.id)
+            }}
+            onContextMenu={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              setConnectingFrom(node.id)
+              setShowAddMenu(false)
             }}
           >
             <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">

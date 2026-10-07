@@ -50,6 +50,7 @@ export default function WorkflowsPage(): React.JSX.Element {
             {selectedNodeId !== null && selectedWorkflow !== null && (
               <div className="w-[320px] shrink-0 border-l border-border">
                 <WorkflowNodeEditorPanel
+                  key={selectedNodeId}
                   workflow={selectedWorkflow}
                   nodeId={selectedNodeId}
                   onClose={() => setSelectedNodeId(null)}
