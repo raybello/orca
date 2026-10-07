@@ -1,14 +1,18 @@
 import { useState, useRef, useEffect } from 'react'
-import { Maximize2, Minimize2, Plus, Workflow } from 'lucide-react'
+import { Maximize2, Minimize2, Plus, Workflow, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { translate } from '@/i18n/i18n'
 import { cn } from '@/lib/utils'
 import { createBrowserUuid } from '@/lib/browser-uuid'
-import type {
-  AgentWorkflow,
-  WorkflowNode,
-  WorkflowNodeType
-} from '../../../../shared/workflow-types'
+import WorkflowRunProgress from './WorkflowRunProgress'
+import {
+  NODE_TYPE_LABELS,
+  NODE_TYPE_COLORS,
+  nodeLabel,
+  ADD_NODE_TYPES,
+  buildDefaultNode
+} from './workflow-canvas-node-config'
+import type { AgentWorkflow, WorkflowNodeType } from '../../../../shared/workflow-types'
 
 type Props = {
   workflow: AgentWorkflow | null
@@ -17,113 +21,6 @@ type Props = {
   onUnfocus: () => void
   onNodeSelect: (nodeId: string | null) => void
   selectedNodeId: string | null
-}
-
-const NODE_TYPE_LABELS: Record<WorkflowNodeType, string> = {
-  trigger_cron: 'Cron Trigger',
-  trigger_manual: 'Manual Trigger',
-  shell_command: 'Shell Command',
-  python_script: 'Python Script',
-  agent_call: 'Agent Call',
-  file_read: 'File Read',
-  file_write: 'File Write',
-  email_send: 'Email Send',
-  json_transform: 'JSON Transform'
-}
-
-const NODE_TYPE_COLORS: Record<WorkflowNodeType, string> = {
-  trigger_cron: 'border-violet-400 bg-violet-50 dark:bg-violet-950/30',
-  trigger_manual: 'border-violet-400 bg-violet-50 dark:bg-violet-950/30',
-  shell_command: 'border-slate-400 bg-slate-50 dark:bg-slate-900/30',
-  python_script: 'border-blue-400 bg-blue-50 dark:bg-blue-950/30',
-  agent_call: 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/30',
-  file_read: 'border-amber-400 bg-amber-50 dark:bg-amber-950/30',
-  file_write: 'border-orange-400 bg-orange-50 dark:bg-orange-950/30',
-  email_send: 'border-pink-400 bg-pink-50 dark:bg-pink-950/30',
-  json_transform: 'border-cyan-400 bg-cyan-50 dark:bg-cyan-950/30'
-}
-
-function nodeLabel(node: WorkflowNode): string {
-  switch (node.type) {
-    case 'shell_command':
-      return node.data.command || node.id.slice(0, 8)
-    case 'python_script':
-      return node.data.script.slice(0, 30) || node.id.slice(0, 8)
-    case 'agent_call':
-      return node.data.prompt.slice(0, 30) || node.id.slice(0, 8)
-    case 'file_read':
-      return node.data.filePath || node.id.slice(0, 8)
-    case 'file_write':
-      return node.data.filePath || node.id.slice(0, 8)
-    case 'trigger_cron':
-      return node.data.schedule || node.id.slice(0, 8)
-    case 'trigger_manual':
-      return 'Manual'
-    case 'email_send':
-      return node.data.to || node.id.slice(0, 8)
-    case 'json_transform':
-      return node.data.expression.slice(0, 30) || node.id.slice(0, 8)
-  }
-}
-
-const ADD_NODE_TYPES: WorkflowNodeType[] = [
-  'trigger_cron',
-  'trigger_manual',
-  'shell_command',
-  'python_script',
-  'agent_call',
-  'file_read',
-  'file_write',
-  'email_send',
-  'json_transform'
-]
-
-function buildDefaultNode(
-  id: string,
-  type: WorkflowNodeType,
-  pos: { x: number; y: number }
-): WorkflowNode {
-  switch (type) {
-    case 'trigger_cron':
-      return { id, type, pos, data: { schedule: '0 8 * * *' } }
-    case 'trigger_manual':
-      return { id, type, pos, data: {} }
-    case 'shell_command':
-      return { id, type, pos, data: { command: '', workingDirectory: '', timeoutSeconds: 30 } }
-    case 'python_script':
-      return {
-        id,
-        type,
-        pos,
-        data: { script: '', workingDirectory: '', timeoutSeconds: 30, pythonBin: 'python3' }
-      }
-    case 'agent_call':
-      return {
-        id,
-        type,
-        pos,
-        data: {
-          prompt: '',
-          agentId: 'cursor',
-          structuredOutputSchema: null,
-          workingDirectory: '',
-          timeoutSeconds: 120
-        }
-      }
-    case 'file_read':
-      return { id, type, pos, data: { filePath: '' } }
-    case 'file_write':
-      return {
-        id,
-        type,
-        pos,
-        data: { filePath: '', content: '', mode: 'overwrite', createParents: true }
-      }
-    case 'email_send':
-      return { id, type, pos, data: { to: '', subject: '', body: '', smtpProfileId: null } }
-    case 'json_transform':
-      return { id, type, pos, data: { expression: '' } }
-  }
 }
 
 export default function WorkflowCanvas({
@@ -195,6 +92,22 @@ export default function WorkflowCanvas({
     })
   }
 
+  async function deleteNode(nodeId: string, e: React.MouseEvent): Promise<void> {
+    e.stopPropagation()
+    if (!workflow) {
+      return
+    }
+    await window.api.workflows.update(workflow.id, {
+      nodes: workflow.nodes.filter((n) => n.id !== nodeId),
+      edges: workflow.edges.filter(
+        (edge) => edge.sourceNodeId !== nodeId && edge.targetNodeId !== nodeId
+      )
+    })
+    if (selectedNodeId === nodeId) {
+      onNodeSelect(null)
+    }
+  }
+
   async function addNode(type: WorkflowNodeType): Promise<void> {
     if (!workflow) {
       return
@@ -251,6 +164,12 @@ export default function WorkflowCanvas({
     window.addEventListener('mouseup', onMouseUp)
   }
 
+  // Collect node positions for the run progress overlay
+  const nodePositions: Record<string, { x: number; y: number }> = {}
+  for (const node of workflow.nodes) {
+    nodePositions[node.id] = node.pos
+  }
+
   return (
     <div className="relative h-full w-full overflow-hidden bg-muted/10">
       <div className="absolute top-2 right-2 z-10 flex gap-1">
@@ -300,7 +219,7 @@ export default function WorkflowCanvas({
       >
         {connectingFrom && (
           <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 bg-primary text-primary-foreground text-[11px] px-2 py-1 rounded shadow pointer-events-none">
-            Right-click a target node to connect — Esc to cancel
+            Click a target node to connect — Esc to cancel
           </div>
         )}
         {/* edges — pointer-events enabled so left-click deletes */}
@@ -345,12 +264,14 @@ export default function WorkflowCanvas({
             )
           })}
         </svg>
+        {/* Run progress overlays (behind nodes, pointer-events-none) */}
+        <WorkflowRunProgress workflowId={workflow.id} nodePositions={nodePositions} />
         {workflow.nodes.map((node) => (
           <div
             id={`wf-node-${node.id}`}
             key={node.id}
             className={cn(
-              'absolute select-none rounded-lg border-2 px-3 py-2 shadow-sm transition-shadow min-w-[160px]',
+              'absolute select-none rounded-lg border-2 px-3 py-2 shadow-sm transition-shadow min-w-[160px] group',
               connectingFrom ? 'cursor-crosshair' : 'cursor-move',
               NODE_TYPE_COLORS[node.type],
               selectedNodeId === node.id && 'ring-2 ring-primary ring-offset-1',
@@ -378,6 +299,15 @@ export default function WorkflowCanvas({
               setShowAddMenu(false)
             }}
           >
+            {/* Delete button — visible on hover */}
+            <button
+              type="button"
+              className="absolute -top-2 -right-2 size-4 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center shadow-sm z-10"
+              onClick={(e) => void deleteNode(node.id, e)}
+              title="Delete node"
+            >
+              <X className="size-2.5" />
+            </button>
             <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">
               {NODE_TYPE_LABELS[node.type]}
             </div>

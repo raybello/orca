@@ -5,6 +5,7 @@ import type { JsonPath } from '../../../../shared/workflow-template-path'
 type Props = {
   nodeId: string
   output: unknown
+  onCopyExpr?: (expr: string) => void
 }
 
 function copyToClipboard(text: string): void {
@@ -21,19 +22,28 @@ function copyToClipboard(text: string): void {
 function JsonNode({
   nodeId,
   value,
-  path
+  path,
+  onCopyExpr
 }: {
   nodeId: string
   value: unknown
   path: JsonPath
+  onCopyExpr?: (expr: string) => void
 }): React.JSX.Element {
   if (value === null || typeof value !== 'object') {
     const expr = buildTemplateExpr(nodeId, path)
+    const handleClick = (): void => {
+      if (onCopyExpr) {
+        onCopyExpr(expr)
+      } else {
+        copyToClipboard(expr)
+      }
+    }
     return (
       <span
         className="cursor-pointer hover:bg-primary/10 rounded px-0.5 text-[11px] font-mono"
-        title={`Click to copy: ${expr}`}
-        onClick={() => copyToClipboard(expr)}
+        title={`Click to ${onCopyExpr ? 'insert' : 'copy'}: ${expr}`}
+        onClick={handleClick}
       >
         {JSON.stringify(value)}
       </span>
@@ -46,7 +56,7 @@ function JsonNode({
         [
         {value.map((item, i) => (
           <span key={i}>
-            <JsonNode nodeId={nodeId} value={item} path={[...path, i]} />
+            <JsonNode nodeId={nodeId} value={item} path={[...path, i]} onCopyExpr={onCopyExpr} />
             {i < value.length - 1 ? ', ' : ''}
           </span>
         ))}
@@ -61,17 +71,21 @@ function JsonNode({
       {entries.map(([k, v]) => (
         <div key={k} className="flex items-start gap-1">
           <span className="text-muted-foreground shrink-0">{k}:</span>
-          <JsonNode nodeId={nodeId} value={v} path={[...path, k]} />
+          <JsonNode nodeId={nodeId} value={v} path={[...path, k]} onCopyExpr={onCopyExpr} />
         </div>
       ))}
     </div>
   )
 }
 
-export default function WorkflowNodeOutputInspector({ nodeId, output }: Props): React.JSX.Element {
+export default function WorkflowNodeOutputInspector({
+  nodeId,
+  output,
+  onCopyExpr
+}: Props): React.JSX.Element {
   return (
     <div className="bg-muted/30 rounded p-2 overflow-x-auto max-h-48 overflow-y-auto scrollbar-sleek">
-      <JsonNode nodeId={nodeId} value={output} path={[]} />
+      <JsonNode nodeId={nodeId} value={output} path={[]} onCopyExpr={onCopyExpr} />
     </div>
   )
 }

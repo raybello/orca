@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { X, Loader2 } from 'lucide-react'
+import Editor from '@monaco-editor/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -10,6 +11,9 @@ import {
   SelectValue
 } from '@/components/ui/select'
 import { translate } from '@/i18n/i18n'
+import { useDocumentDarkTheme } from '@/hooks/use-document-dark-theme'
+import { useWorkflowLastOutputs } from '@/hooks/use-workflow-last-outputs'
+import WorkflowOutputBrowserDrawer from './WorkflowOutputBrowserDrawer'
 import type { AgentWorkflow } from '../../../../shared/workflow-types'
 import type { TuiAgent } from '../../../../shared/tui-agent'
 import type { WorkflowModel } from '../../../../preload/api/workflow-bridge'
@@ -36,6 +40,13 @@ type ModelFetch =
   | { state: 'done'; models: WorkflowModel[] }
   | { state: 'error' }
 
+// Fields that get a Monaco editor instead of a plain text input
+const MONACO_FIELDS: Record<string, { language: string; label: string }> = {
+  script: { language: 'python', label: 'Script' },
+  command: { language: 'shell', label: 'Command' },
+  expression: { language: 'javascript', label: 'Expression' }
+}
+
 export default function WorkflowNodeEditorPanel({
   workflow,
   nodeId,
@@ -43,6 +54,8 @@ export default function WorkflowNodeEditorPanel({
   onWorkflowChange
 }: Props): React.JSX.Element {
   const node = workflow.nodes.find((n) => n.id === nodeId)
+  const isDark = useDocumentDarkTheme()
+  const lastOutputs = useWorkflowLastOutputs(workflow.id)
 
   // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: node.data is a plain record; exact shape varies by node type but all values are serializable
   const [localData, setLocalData] = useState<Record<string, string>>(
@@ -57,6 +70,8 @@ export default function WorkflowNodeEditorPanel({
   // Per-agent model cache — persists across agent switches in the same panel mount
   const modelCache = useRef<Map<TuiAgent, ModelFetch>>(new Map())
   const [modelFetch, setModelFetch] = useState<ModelFetch>({ state: 'loading' })
+  // Track insertion target for output browser
+  const [insertTarget, setInsertTarget] = useState<string | null>(null)
 
   const isAgentCall = node?.type === 'agent_call'
   // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: localData is built from node.data which has agentId: TuiAgent; string cast is safe here
@@ -88,6 +103,18 @@ export default function WorkflowNodeEditorPanel({
       })
   }, [isAgentCall, currentAgent])
 
+  const handleInsertExpr = useCallback(
+    (expr: string) => {
+      if (insertTarget) {
+        setLocalData((prev) => ({
+          ...prev,
+          [insertTarget]: (prev[insertTarget] ?? '') + expr
+        }))
+      }
+    },
+    [insertTarget]
+  )
+
   if (!node) {
     return <div />
   }
@@ -96,13 +123,21 @@ export default function WorkflowNodeEditorPanel({
     const updatedNodes = workflow.nodes.map((n) =>
       n.id === nodeId ? { ...n, data: { ...n.data, ...localData } } : n
     )
+    // Sync cron trigger node schedule to workflow.schedule
+    const cronNode = updatedNodes.find((n) => n.type === 'trigger_cron')
+    const schedulePatch =
+      node?.type === 'trigger_cron' && localData['schedule'] !== undefined
+        ? { schedule: localData['schedule'] || null }
+        : {}
     const updated = await window.api.workflows.update(workflow.id, {
       // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: updatedNodes preserves the discriminated union structure; data field values may widen to unknown but nodes array is type-compatible
-      nodes: updatedNodes as AgentWorkflow['nodes']
+      nodes: updatedNodes as AgentWorkflow['nodes'],
+      ...schedulePatch
     })
     if (updated) {
       onWorkflowChange(updated)
     }
+    void cronNode
   }
 
   // Fields to render as plain text inputs (excluding agent-specific dropdowns)
@@ -117,9 +152,18 @@ export default function WorkflowNodeEditorPanel({
     <div className="flex flex-col h-full min-h-0 overflow-hidden">
       <div className="flex items-center justify-between px-3 py-2 border-b border-border shrink-0">
         <span className="text-[13px] font-semibold">{node.type.replace(/_/g, ' ')}</span>
-        <Button size="icon" variant="ghost" className="size-6" onClick={onClose}>
-          <X className="size-3.5" />
-        </Button>
+        <div className="flex items-center gap-1">
+          {lastOutputs && Object.keys(lastOutputs).length > 0 && (
+            <WorkflowOutputBrowserDrawer
+              workflow={workflow}
+              lastOutputs={lastOutputs}
+              onInsert={handleInsertExpr}
+            />
+          )}
+          <Button size="icon" variant="ghost" className="size-6" onClick={onClose}>
+            <X className="size-3.5" />
+          </Button>
+        </div>
       </div>
       <div className="flex-1 overflow-y-auto scrollbar-sleek p-3 space-y-3">
         {isAgentCall && (
@@ -189,18 +233,55 @@ export default function WorkflowNodeEditorPanel({
             </div>
           </>
         )}
-        {genericFields.map((key) => (
-          <div key={key} className="space-y-1">
-            <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-              {key}
-            </span>
-            <Input
-              value={localData[key]}
-              onChange={(e) => setLocalData((prev) => ({ ...prev, [key]: e.target.value }))}
-              className="h-7"
-            />
-          </div>
-        ))}
+        {genericFields.map((key) => {
+          const monacoConfig = MONACO_FIELDS[key]
+          if (monacoConfig) {
+            return (
+              <div key={key} className="space-y-1">
+                <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  {monacoConfig.label}
+                </span>
+                <div
+                  className="rounded border border-border overflow-hidden"
+                  style={{ height: 180 }}
+                  onFocus={() => setInsertTarget(key)}
+                  onBlur={() => setInsertTarget(null)}
+                >
+                  <Editor
+                    value={localData[key]}
+                    language={monacoConfig.language}
+                    theme={isDark ? 'vs-dark' : 'light'}
+                    options={{
+                      minimap: { enabled: false },
+                      lineNumbers: 'on',
+                      scrollBeyondLastLine: false,
+                      wordWrap: 'on',
+                      fontSize: 12,
+                      tabSize: 2,
+                      automaticLayout: true,
+                      padding: { top: 6, bottom: 6 }
+                    }}
+                    onChange={(v) => setLocalData((prev) => ({ ...prev, [key]: v ?? '' }))}
+                  />
+                </div>
+              </div>
+            )
+          }
+          return (
+            <div key={key} className="space-y-1">
+              <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                {key}
+              </span>
+              <Input
+                value={localData[key]}
+                onChange={(e) => setLocalData((prev) => ({ ...prev, [key]: e.target.value }))}
+                onFocus={() => setInsertTarget(key)}
+                onBlur={() => setInsertTarget(null)}
+                className="h-7"
+              />
+            </div>
+          )
+        })}
       </div>
       <div className="px-3 py-2 border-t border-border shrink-0">
         <Button size="sm" className="w-full h-7" onClick={() => void handleSave()}>

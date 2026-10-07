@@ -5,6 +5,7 @@ import {
   CLAUDE_MODEL_LIST_ARGS,
   parseClaudeModelList
 } from '../../shared/claude-model-list-probe'
+import { connectionManager } from './ssh-ipc-context'
 import type { WorkflowService } from '../workflows/workflow-service'
 import type { AgentWorkflow } from '../../shared/workflow-types'
 import type { TuiAgent } from '../../shared/tui-agent'
@@ -74,6 +75,10 @@ async function fetchModelsForAgent(agentId: TuiAgent): Promise<WorkflowModel[]> 
 }
 
 export function registerWorkflowHandlers(service: WorkflowService): void {
+  // Wire SSH connection manager into service so SSH-target workflows use remote exec
+  if (connectionManager) {
+    service.setSshConnectionManager(connectionManager)
+  }
   ipcMain.handle('workflows:list', () => service.listWorkflows())
 
   ipcMain.handle('workflows:getRuns', (_e, workflowId?: string) => service.listRuns(workflowId))

@@ -3,6 +3,9 @@ import type { AgentWorkflow, WorkflowRun } from '../../shared/workflow-types'
 import type { Store } from '../persistence'
 import { executeWorkflow } from './workflow-executor'
 import { findDueWorkflows } from './workflow-scheduler'
+import { buildSshRemoteExec } from './workflow-remote-exec'
+import type { RemoteExecFn } from './workflow-remote-exec'
+import type { SshConnectionManager } from '../ssh/ssh-connection-manager'
 import type { WebContents } from 'electron'
 
 const TICK_MS = 60 * 1000
@@ -12,11 +15,16 @@ export class WorkflowService {
   private webContents: WebContents | null = null
   private stopped = false
   private readonly activeAbortControllers = new Map<string, AbortController>()
+  private sshConnectionManager: SshConnectionManager | null = null
 
   constructor(private readonly store: Store) {}
 
   setWebContents(wc: WebContents): void {
     this.webContents = wc
+  }
+
+  setSshConnectionManager(manager: SshConnectionManager): void {
+    this.sshConnectionManager = manager
   }
 
   start(): void {
@@ -58,6 +66,13 @@ export class WorkflowService {
     }
   }
 
+  private buildRemoteExec(workflow: AgentWorkflow): RemoteExecFn | undefined {
+    if (workflow.executionTargetType !== 'ssh' || !this.sshConnectionManager) {
+      return undefined
+    }
+    return buildSshRemoteExec(this.sshConnectionManager, workflow.executionTargetId)
+  }
+
   async runWorkflow(
     workflow: AgentWorkflow,
     trigger: WorkflowRun['trigger']
@@ -67,6 +82,8 @@ export class WorkflowService {
     this.activeAbortControllers.set(run.id, ac)
 
     this.publish('workflows:runUpdated', { workflowId: workflow.id, run })
+
+    const remoteExec = this.buildRemoteExec(workflow)
 
     void executeWorkflow(
       workflow,
@@ -97,7 +114,8 @@ export class WorkflowService {
           })
         }
       },
-      ac.signal
+      ac.signal,
+      remoteExec
     )
 
     return run

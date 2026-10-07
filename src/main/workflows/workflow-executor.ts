@@ -9,6 +9,7 @@ import { runEmailSendNode } from './workflow-node-runner-email'
 import { runJsonTransformNode } from './workflow-node-runner-json'
 import type { WorkflowStoreOperations } from './workflow-run-store'
 import { patchNodeRun, finalizeWorkflowRun } from './workflow-run-store'
+import type { RemoteExecFn } from './workflow-remote-exec'
 
 export type WorkflowExecutorCallbacks = {
   onNodeStart?: (runId: string, nodeId: string) => void
@@ -25,7 +26,8 @@ function resolveField(value: string, steps: StepOutputs): string {
 async function executeNode(
   node: WorkflowNode,
   steps: StepOutputs,
-  signal: AbortSignal
+  signal: AbortSignal,
+  remoteExec?: RemoteExecFn
 ): Promise<{ stdout: string; stderr: string; outputValue: unknown; exitCode: number | null }> {
   // Use the last non-trigger step's output as stdin where applicable
   const prevIds = Object.keys(steps)
@@ -43,7 +45,9 @@ async function executeNode(
       }
       const r = await runShellCommandNode(
         { ...node.data, command: resolveField(node.data.command, steps) },
-        prevOutput
+        prevOutput,
+        remoteExec,
+        signal
       )
       return { ...r, outputValue: { stdout: r.stdout, stderr: r.stderr, exitCode: r.exitCode } }
     }
@@ -51,7 +55,7 @@ async function executeNode(
       if (signal.aborted) {
         throw new Error('Cancelled')
       }
-      const r = await runPythonScriptNode(node.data, prevOutput)
+      const r = await runPythonScriptNode(node.data, prevOutput, remoteExec, signal)
       return { ...r, outputValue: { stdout: r.stdout, stderr: r.stderr, exitCode: r.exitCode } }
     }
     case 'agent_call': {
@@ -111,7 +115,8 @@ export async function executeWorkflow(
   runId: string,
   ops: WorkflowStoreOperations,
   callbacks: WorkflowExecutorCallbacks = {},
-  signal: AbortSignal = new AbortController().signal
+  signal: AbortSignal = new AbortController().signal,
+  remoteExec?: RemoteExecFn
 ): Promise<void> {
   const sorted = topologicalSort(workflow)
   if (!sorted) {
@@ -134,7 +139,7 @@ export async function executeWorkflow(
 
     const startMs = Date.now()
     try {
-      const result = await executeNode(node, steps, signal)
+      const result = await executeNode(node, steps, signal, remoteExec)
       const durationMs = Date.now() - startMs
       let json: unknown = null
       try {
