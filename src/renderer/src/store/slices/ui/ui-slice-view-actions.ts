@@ -102,6 +102,17 @@ export function createUiViewActions(set: UISliceSet, get: UISliceGet): Partial<U
       set((state) => ({
         activeView: state.previousViewBeforeMobile
       })),
+    openWorkflowsPage: () => {
+      set((state) => ({
+        activeView: 'workflows',
+        previousViewBeforeWorkflows:
+          state.activeView === 'workflows' ? state.previousViewBeforeWorkflows : state.activeView
+      }))
+    },
+    closeWorkflowsPage: () =>
+      set((state) => ({
+        activeView: state.previousViewBeforeWorkflows
+      })),
     setNewWorkspaceDraft: (draft) => set({ newWorkspaceDraft: draft }),
     clearNewWorkspaceDraft: () => set({ newWorkspaceDraft: null })
   }

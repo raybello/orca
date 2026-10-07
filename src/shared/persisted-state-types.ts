@@ -6,6 +6,7 @@ import type {
   SshTarget
 } from './ssh-types'
 import type { Automation, AutomationRun } from './automations-types'
+import type { AgentWorkflow, WorkflowRun } from './workflow-types'
 import type { MigrationUnsupportedPtyEntry } from './agent-status-types'
 import type { FeatureInteractionTelemetryBucketState } from './feature-interactions'
 import type { CodexResetCreditAttemptLedger } from './codex-reset-credit-attempt-ledger'
@@ -109,6 +110,8 @@ export type PersistedState = {
   legacyPaneKeyAliasEntries: LegacyPaneKeyAliasEntry[]
   automations: Automation[]
   automationRuns: AutomationRun[]
+  agentWorkflows: AgentWorkflow[]
+  agentWorkflowRuns: WorkflowRun[]
   onboarding: OnboardingState
   /** Main-owned telemetry de-dupe marker; never exposed through PersistedUIState. */
   featureInteractionTelemetryBuckets?: FeatureInteractionTelemetryBucketState

@@ -18,6 +18,7 @@ const WorktreeCreationPanel = lazy(
 )
 const TaskPage = lazy(() => import('../components/task-page/TaskPage'))
 const AutomationsPage = lazy(() => import('../components/automations/AutomationsPage'))
+const WorkflowsPage = lazy(() => import('../components/workflows/WorkflowsPage'))
 const ActivityPrototypePage = lazy(() => import('../components/activity/ActivityPrototypePage'))
 const Settings = lazy(() => import('../components/settings/Settings'))
 const SkillsPage = lazy(() => import('../components/skills/SkillsPage'))
@@ -73,6 +74,7 @@ function ActivePage({ layout }: { layout: AppChromeLayout }): React.JSX.Element 
       {activeView === 'artifacts' ? <ArtifactsPage /> : null}
       {activeView === 'tasks' ? <TaskPage /> : null}
       {activeView === 'automations' ? <AutomationsPage /> : null}
+      {activeView === 'workflows' ? <WorkflowsPage /> : null}
       {activeView === 'activity' ? <ActivityPrototypePage /> : null}
       {activeView === 'space' ? <WorkspaceSpacePage /> : null}
       {activeView === 'mobile' ? <MobilePage /> : null}
@@ -158,6 +160,7 @@ export function AppWorkspaceShell(props: {
               {/* Why: automations/artifacts own their page headers; the stacked titlebar would be an empty 36px stripe. */}
               {layout.stackedSidebarOpen &&
               layout.activeView !== 'automations' &&
+              layout.activeView !== 'workflows' &&
               layout.activeView !== 'artifacts' ? (
                 <div className="titlebar">{titlebarMainStrip}</div>
               ) : null}

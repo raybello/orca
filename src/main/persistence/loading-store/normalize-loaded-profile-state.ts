@@ -106,6 +106,8 @@ export function normalizeLoadedProfileState(
     legacyPaneKeyAliasEntries: normalizeLegacyPaneKeyAliasEntries(parsed.legacyPaneKeyAliasEntries),
     automations: Array.isArray(parsed.automations) ? parsed.automations : [],
     automationRuns: normalizeLoadedAutomationRuns(parsed, markNeedsSave),
+    agentWorkflows: Array.isArray(parsed.agentWorkflows) ? parsed.agentWorkflows : [],
+    agentWorkflowRuns: Array.isArray(parsed.agentWorkflowRuns) ? parsed.agentWorkflowRuns : [],
     onboarding: normalizedOnboarding
   }
 }

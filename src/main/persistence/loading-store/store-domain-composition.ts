@@ -63,6 +63,7 @@ import {
   SshLeaseRecoveryOperations,
   installSshLeaseRecoveryOperationsContext
 } from './ssh-lease-recovery-operations'
+import { WorkflowPersistence, installWorkflowPersistenceContext } from './workflow-persistence'
 
 export type StoreDomainOperations = WriteSchedulingOperations &
   PrimaryStateWriteOperations &
@@ -79,7 +80,8 @@ export type StoreDomainOperations = WriteSchedulingOperations &
   SshProfileOperations &
   RetiredWorktreeNamePersistence &
   SshLeaseRecoveryOperations &
-  WriteFlushBarrierOperations
+  WriteFlushBarrierOperations &
+  WorkflowPersistence
 
 export type StoreDomains = {
   adaptation: LoadedStateAdaptationOperations
@@ -103,6 +105,7 @@ export type StoreDomains = {
   sshProfiles: SshProfileOperations
   retiredWorktreeNames: RetiredWorktreeNamePersistence
   sshLeases: SshLeaseRecoveryOperations
+  workflows: WorkflowPersistence
 }
 
 export const STORE_DOMAIN_OPERATION_CLASSES = [
@@ -121,7 +124,8 @@ export const STORE_DOMAIN_OPERATION_CLASSES = [
   SshProfileOperations,
   RetiredWorktreeNamePersistence,
   SshLeaseRecoveryOperations,
-  WriteFlushBarrierOperations
+  WriteFlushBarrierOperations,
+  WorkflowPersistence
 ] as const
 
 export function installStoreDomainContexts(target: Store, domains: StoreDomains): void {
@@ -141,6 +145,7 @@ export function installStoreDomainContexts(target: Store, domains: StoreDomains)
   installRetiredWorktreeNamePersistenceContext(target, domains.retiredWorktreeNames)
   installSshLeaseRecoveryOperationsContext(target, domains.sshLeases)
   installWriteFlushBarrierOperationsContext(target, domains.flushBarriers)
+  installWorkflowPersistenceContext(target, domains.workflows)
 }
 
 export function createStoreDomains(runtime: StoreRuntimeState): StoreDomains {
@@ -175,6 +180,7 @@ export function createStoreDomains(runtime: StoreRuntimeState): StoreDomains {
     bindingRecovery,
     scheduling
   )
+  const workflows = new WorkflowPersistence(runtime, scheduling)
   return {
     adaptation,
     cohorts,
@@ -196,6 +202,7 @@ export function createStoreDomains(runtime: StoreRuntimeState): StoreDomains {
     ptyBindings,
     sshProfiles,
     retiredWorktreeNames,
-    sshLeases
+    sshLeases,
+    workflows
   }
 }
