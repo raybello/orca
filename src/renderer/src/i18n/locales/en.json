@@ -19390,5 +19390,25 @@
   "projectField": {
     "updateFailed": "Failed to update project field"
   },
-  "settings.appearance.chat.title": "Chat"
+  "settings.appearance.chat.title": "Chat",
+  "workflows": {
+    "sidebar": {
+      "label": "Agent Workflows"
+    },
+    "canvas": {
+      "empty": "Select or create a workflow to start editing.",
+      "addNode": "Click + to add nodes"
+    },
+    "list": {
+      "title": "Workflows",
+      "empty": "No workflows yet. Click + to create one."
+    },
+    "node": {
+      "save": "Save"
+    },
+    "history": {
+      "title": "Run History",
+      "empty": "No runs yet."
+    }
+  }
 }
