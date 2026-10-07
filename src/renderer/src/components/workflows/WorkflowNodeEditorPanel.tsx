@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { X } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { X, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -12,6 +12,7 @@ import {
 import { translate } from '@/i18n/i18n'
 import type { AgentWorkflow } from '../../../../shared/workflow-types'
 import type { TuiAgent } from '../../../../shared/tui-agent'
+import type { WorkflowModel } from '../../../../preload/api/workflow-bridge'
 
 type Props = {
   workflow: AgentWorkflow
@@ -30,13 +31,10 @@ const WORKFLOW_AGENTS: { value: TuiAgent; label: string }[] = [
   { value: 'opencode', label: 'OpenCode (opencode -p)' }
 ]
 
-// Common model suggestions per agent; the input remains free-text
-const MODEL_SUGGESTIONS: Partial<Record<TuiAgent, string[]>> = {
-  claude: ['sonnet', 'opus', 'haiku', 'claude-sonnet-4-5', 'claude-opus-4-5', 'claude-haiku-4-5'],
-  cursor: ['claude-opus-4-5', 'claude-sonnet-4-5', 'gpt-4o', 'gemini-2.5-pro'],
-  gemini: ['gemini-2.5-pro', 'gemini-2.5-flash'],
-  codex: ['codex-mini', 'o4-mini']
-}
+type ModelFetch =
+  | { state: 'loading' }
+  | { state: 'done'; models: WorkflowModel[] }
+  | { state: 'error' }
 
 export default function WorkflowNodeEditorPanel({
   workflow,
@@ -56,14 +54,43 @@ export default function WorkflowNodeEditorPanel({
       : {}
   )
 
+  // Per-agent model cache — persists across agent switches in the same panel mount
+  const modelCache = useRef<Map<TuiAgent, ModelFetch>>(new Map())
+  const [modelFetch, setModelFetch] = useState<ModelFetch>({ state: 'loading' })
+
+  const isAgentCall = node?.type === 'agent_call'
+  // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: localData is built from node.data which has agentId: TuiAgent; string cast is safe here
+  const currentAgent = (localData['agentId'] as TuiAgent | undefined) ?? 'claude'
+
+  useEffect(() => {
+    if (!isAgentCall) {
+      return
+    }
+    const cached = modelCache.current.get(currentAgent)
+    if (cached) {
+      setModelFetch(cached)
+      return
+    }
+    const loading: ModelFetch = { state: 'loading' }
+    modelCache.current.set(currentAgent, loading)
+    setModelFetch(loading)
+    void window.api.workflows
+      .listModels(currentAgent)
+      .then((models) => {
+        const done: ModelFetch = { state: 'done', models }
+        modelCache.current.set(currentAgent, done)
+        setModelFetch((prev) => (prev === loading ? done : prev))
+      })
+      .catch(() => {
+        const err: ModelFetch = { state: 'error' }
+        modelCache.current.set(currentAgent, err)
+        setModelFetch((prev) => (prev === loading ? err : prev))
+      })
+  }, [isAgentCall, currentAgent])
+
   if (!node) {
     return <div />
   }
-
-  const isAgentCall = node.type === 'agent_call'
-  // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: localData is built from node.data which has agentId: TuiAgent; string cast is safe here
-  const currentAgent = (localData['agentId'] as TuiAgent | undefined) ?? 'claude'
-  const modelSuggestions = MODEL_SUGGESTIONS[currentAgent] ?? []
 
   async function handleSave(): Promise<void> {
     const updatedNodes = workflow.nodes.map((n) =>
@@ -83,6 +110,9 @@ export default function WorkflowNodeEditorPanel({
     isAgentCall ? k !== 'agentId' && k !== 'model' && k !== 'structuredOutputSchema' : true
   )
 
+  const availableModels = modelFetch.state === 'done' ? modelFetch.models : []
+  const selectedModel = localData['model'] ?? ''
+
   return (
     <div className="flex flex-col h-full min-h-0 overflow-hidden">
       <div className="flex items-center justify-between px-3 py-2 border-b border-border shrink-0">
@@ -100,7 +130,9 @@ export default function WorkflowNodeEditorPanel({
               </span>
               <Select
                 value={currentAgent}
-                onValueChange={(v) => setLocalData((prev) => ({ ...prev, agentId: v }))}
+                onValueChange={(v) => {
+                  setLocalData((prev) => ({ ...prev, agentId: v, model: '' }))
+                }}
               >
                 <SelectTrigger className="h-7">
                   <SelectValue />
@@ -118,33 +150,41 @@ export default function WorkflowNodeEditorPanel({
               <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                 Model
               </span>
-              <Input
-                value={localData['model'] ?? ''}
-                onChange={(e) => setLocalData((prev) => ({ ...prev, model: e.target.value }))}
-                placeholder="default"
-                list={`model-suggestions-${nodeId}`}
-                className="h-7"
-              />
-              {modelSuggestions.length > 0 && (
-                <datalist id={`model-suggestions-${nodeId}`}>
-                  {modelSuggestions.map((m) => (
-                    <option key={m} value={m} />
-                  ))}
-                </datalist>
-              )}
-              {modelSuggestions.length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-1">
-                  {modelSuggestions.map((m) => (
-                    <button
-                      key={m}
-                      type="button"
-                      className="text-[10px] px-1.5 py-0.5 rounded bg-muted hover:bg-muted/70 text-muted-foreground transition-colors"
-                      onClick={() => setLocalData((prev) => ({ ...prev, model: m }))}
-                    >
-                      {m}
-                    </button>
-                  ))}
+              {modelFetch.state === 'loading' && (
+                <div className="flex items-center gap-1.5 h-7 text-[12px] text-muted-foreground">
+                  <Loader2 className="size-3 animate-spin" />
+                  <span>Loading models…</span>
                 </div>
+              )}
+              {modelFetch.state === 'error' && (
+                <div className="h-7 flex items-center text-[12px] text-muted-foreground">
+                  Could not fetch models — enter manually
+                </div>
+              )}
+              {modelFetch.state === 'done' && availableModels.length === 0 && (
+                <div className="h-7 flex items-center text-[12px] text-muted-foreground">
+                  No models found for this agent
+                </div>
+              )}
+              {modelFetch.state === 'done' && availableModels.length > 0 && (
+                <Select
+                  value={selectedModel || '__default__'}
+                  onValueChange={(v) =>
+                    setLocalData((prev) => ({ ...prev, model: v === '__default__' ? '' : v }))
+                  }
+                >
+                  <SelectTrigger className="h-7">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__default__">Default</SelectItem>
+                    {availableModels.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               )}
             </div>
           </>

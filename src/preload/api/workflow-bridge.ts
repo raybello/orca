@@ -1,5 +1,8 @@
 import { ipcRenderer } from 'electron'
 import type { AgentWorkflow, WorkflowRun } from '../../shared/workflow-types'
+import type { TuiAgent } from '../../shared/tui-agent'
+
+export type WorkflowModel = { id: string; label: string }
 
 export type WorkflowsApi = {
   list: () => Promise<AgentWorkflow[]>
@@ -9,6 +12,7 @@ export type WorkflowsApi = {
   delete: (id: string) => Promise<boolean>
   runNow: (workflowId: string) => Promise<WorkflowRun>
   cancelRun: (runId: string) => Promise<void>
+  listModels: (agentId: TuiAgent) => Promise<WorkflowModel[]>
   onChanged: (
     cb: (payload: { workflows: AgentWorkflow[]; runs: WorkflowRun[] }) => void
   ) => () => void
@@ -23,6 +27,7 @@ export const workflowsApi: WorkflowsApi = {
   delete: (id) => ipcRenderer.invoke('workflows:delete', id),
   runNow: (workflowId) => ipcRenderer.invoke('workflows:runNow', workflowId),
   cancelRun: (runId) => ipcRenderer.invoke('workflows:cancelRun', runId),
+  listModels: (agentId) => ipcRenderer.invoke('workflows:listModels', agentId),
   onChanged: (cb) => {
     const listener = (_e: Electron.IpcRendererEvent, payload: Parameters<typeof cb>[0]) =>
       cb(payload)
