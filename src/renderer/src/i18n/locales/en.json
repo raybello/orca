@@ -19397,11 +19397,24 @@
     },
     "canvas": {
       "empty": "Select or create a workflow to start editing.",
-      "addNode": "Click + to add nodes"
+      "addNode": "Click + to add nodes",
+      "addNodeButton": "Add node",
+      "exitFocus": "Exit focus",
+      "focusCanvas": "Focus canvas",
+      "connectHint": "Click a target node to connect — Esc to cancel",
+      "deleteNode": "Delete node"
     },
     "list": {
       "title": "Workflows",
-      "empty": "No workflows yet. Click + to create one."
+      "empty": "No workflows yet. Click + to create one.",
+      "rename": "Rename",
+      "runNow": "Run now",
+      "stopScheduling": "Stop scheduling",
+      "delete": "Delete",
+      "renameTitle": "Rename Workflow",
+      "namePlaceholder": "Workflow name",
+      "cancel": "Cancel",
+      "save": "Save"
     },
     "node": {
       "save": "Save"
@@ -19409,6 +19422,61 @@
     "history": {
       "title": "Run History",
       "empty": "No runs yet."
+    },
+    "cron": {
+      "everyMinute": "Every minute",
+      "every5m": "Every 5 minutes",
+      "every15m": "Every 15 minutes",
+      "every30m": "Every 30 minutes",
+      "everyHour": "Every hour",
+      "every2h": "Every 2 hours",
+      "every6h": "Every 6 hours",
+      "dailyMidnight": "Daily at midnight",
+      "daily6am": "Daily at 6 AM",
+      "daily8am": "Daily at 8 AM",
+      "dailyNoon": "Daily at noon",
+      "weekdays9am": "Weekdays at 9 AM (Mon–Fri)",
+      "weeklyMon8am": "Weekly — Monday at 8 AM",
+      "monthly1st": "Monthly — 1st at midnight",
+      "schedule": "Schedule",
+      "choosePlaceholder": "Choose a template…",
+      "customExpression": "Custom expression…",
+      "cronPlaceholder": "* * * * *  (min hour dom month dow)"
+    },
+    "nodeEditor": {
+      "agentClaude": "Claude (claude -p)",
+      "agentCursor": "Cursor (cursor-agent -p)",
+      "agentCodex": "Codex (codex --quiet)",
+      "agentGemini": "Gemini (gemini -p)",
+      "agentAmp": "Amp (amp -p)",
+      "agentOpenCode": "OpenCode (opencode -p)",
+      "fieldScript": "Script",
+      "fieldCommand": "Command",
+      "fieldExpression": "Expression",
+      "agent": "Agent",
+      "model": "Model",
+      "loadingModels": "Loading models…",
+      "modelsError": "Could not fetch models — enter manually",
+      "noModels": "No models found for this agent",
+      "modelDefault": "Default"
+    },
+    "output": {
+      "clickTo": "Click to",
+      "insert": "insert",
+      "copy": "copy"
+    },
+    "outputBrowser": {
+      "browseTitle": "Browse last run outputs",
+      "browseButton": "Browse outputs",
+      "lastRunOutputs": "Last Run Outputs",
+      "noOutputs": "No outputs from last run yet.",
+      "insertHint": "Click a value to insert template expression"
+    },
+    "run": {
+      "running": "Running…",
+      "nodes": "nodes",
+      "completed": "Run completed",
+      "failed": "Run failed:"
     }
   }
 }
