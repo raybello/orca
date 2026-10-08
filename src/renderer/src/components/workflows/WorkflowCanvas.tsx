@@ -33,6 +33,9 @@ export default function WorkflowCanvas({
 }: Props): React.JSX.Element {
   const [showAddMenu, setShowAddMenu] = useState(false)
   const [connectingFrom, setConnectingFrom] = useState<string | null>(null)
+  const [draggingPos, setDraggingPos] = useState<{ nodeId: string; x: number; y: number } | null>(
+    null
+  )
   const dragRef = useRef<{
     nodeId: string
     startX: number
@@ -134,21 +137,24 @@ export default function WorkflowCanvas({
       origX: node.pos.x,
       origY: node.pos.y
     }
+    let rafId = 0
     const onMouseMove = (ev: MouseEvent): void => {
-      if (!dragRef.current || !workflow) {
+      if (!dragRef.current) {
         return
       }
-      const dx = ev.clientX - dragRef.current.startX
-      const dy = ev.clientY - dragRef.current.startY
-      const el = document.getElementById(`wf-node-${nodeId}`)
-      if (el) {
-        el.style.left = `${dragRef.current.origX + dx}px`
-        el.style.top = `${dragRef.current.origY + dy}px`
-      }
+      cancelAnimationFrame(rafId)
+      const snap = { ...dragRef.current, clientX: ev.clientX, clientY: ev.clientY }
+      rafId = requestAnimationFrame(() => {
+        const dx = snap.clientX - snap.startX
+        const dy = snap.clientY - snap.startY
+        setDraggingPos({ nodeId: snap.nodeId, x: snap.origX + dx, y: snap.origY + dy })
+      })
     }
     const onMouseUp = async (ev: MouseEvent): Promise<void> => {
+      cancelAnimationFrame(rafId)
       window.removeEventListener('mousemove', onMouseMove)
       window.removeEventListener('mouseup', onMouseUp)
+      setDraggingPos(null)
       if (!dragRef.current || !workflow) {
         return
       }
@@ -162,6 +168,16 @@ export default function WorkflowCanvas({
     }
     window.addEventListener('mousemove', onMouseMove)
     window.addEventListener('mouseup', onMouseUp)
+  }
+
+  function effectivePos(
+    nodeId: string,
+    stored: { x: number; y: number }
+  ): { x: number; y: number } {
+    if (draggingPos?.nodeId === nodeId) {
+      return { x: draggingPos.x, y: draggingPos.y }
+    }
+    return stored
   }
 
   // Collect node positions for the run progress overlay
@@ -230,10 +246,12 @@ export default function WorkflowCanvas({
             if (!src || !tgt) {
               return null
             }
-            const x1 = src.pos.x + 80
-            const y1 = src.pos.y + 24
-            const x2 = tgt.pos.x + 80
-            const y2 = tgt.pos.y + 24
+            const sp = effectivePos(src.id, src.pos)
+            const tp = effectivePos(tgt.id, tgt.pos)
+            const x1 = sp.x + 80
+            const y1 = sp.y + 24
+            const x2 = tp.x + 80
+            const y2 = tp.y + 24
             const mx = (x1 + x2) / 2
             return (
               <g
@@ -256,9 +274,10 @@ export default function WorkflowCanvas({
                   d={`M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`}
                   fill="none"
                   stroke="currentColor"
-                  strokeWidth={1.5}
-                  strokeDasharray="4 2"
-                  className="text-border hover:text-destructive transition-colors"
+                  strokeWidth={2.5}
+                  strokeDasharray="6 3"
+                  strokeLinecap="round"
+                  className="text-foreground/60 hover:text-destructive transition-colors"
                 />
               </g>
             )
@@ -277,7 +296,10 @@ export default function WorkflowCanvas({
               selectedNodeId === node.id && 'ring-2 ring-primary ring-offset-1',
               connectingFrom === node.id && 'ring-2 ring-primary ring-offset-2 opacity-60'
             )}
-            style={{ left: node.pos.x, top: node.pos.y }}
+            style={{
+              left: effectivePos(node.id, node.pos).x,
+              top: effectivePos(node.id, node.pos).y
+            }}
             onMouseDown={(e) => {
               if (!connectingFrom) {
                 handleMouseDown(e, node.id)

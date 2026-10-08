@@ -12,6 +12,7 @@ export type WorkflowsApi = {
   delete: (id: string) => Promise<boolean>
   runNow: (workflowId: string) => Promise<WorkflowRun>
   cancelRun: (runId: string) => Promise<void>
+  stop: (workflowId: string) => Promise<boolean>
   listModels: (agentId: TuiAgent) => Promise<WorkflowModel[]>
   onChanged: (
     cb: (payload: { workflows: AgentWorkflow[]; runs: WorkflowRun[] }) => void
@@ -27,6 +28,7 @@ export const workflowsApi: WorkflowsApi = {
   delete: (id) => ipcRenderer.invoke('workflows:delete', id),
   runNow: (workflowId) => ipcRenderer.invoke('workflows:runNow', workflowId),
   cancelRun: (runId) => ipcRenderer.invoke('workflows:cancelRun', runId),
+  stop: (workflowId) => ipcRenderer.invoke('workflows:stop', workflowId),
   listModels: (agentId) => ipcRenderer.invoke('workflows:listModels', agentId),
   onChanged: (cb) => {
     const listener = (_e: Electron.IpcRendererEvent, payload: Parameters<typeof cb>[0]) =>

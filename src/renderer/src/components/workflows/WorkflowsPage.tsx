@@ -3,12 +3,18 @@ import WorkflowList from './WorkflowList'
 import WorkflowCanvas from './WorkflowCanvas'
 import WorkflowNodeEditorPanel from './WorkflowNodeEditorPanel'
 import WorkflowRunHistory from './WorkflowRunHistory'
+import PanelDivider from './PanelDivider'
+import { usePersistedSize } from '@/hooks/use-persisted-size'
 import type { AgentWorkflow } from '../../../../shared/workflow-types'
 
 export default function WorkflowsPage(): React.JSX.Element {
   const [canvasFocused, setCanvasFocused] = useState(false)
   const [selectedWorkflow, setSelectedWorkflow] = useState<AgentWorkflow | null>(null)
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
+
+  const [leftWidth, adjustLeft] = usePersistedSize('wf-panel-left', 240, 160, 420)
+  const [rightWidth, adjustRight] = usePersistedSize('wf-panel-right', 320, 200, 520)
+  const [bottomHeight, adjustBottom] = usePersistedSize('wf-panel-bottom', 220, 80, 420)
 
   const selectedWorkflowId = selectedWorkflow?.id ?? null
   useEffect(() => {
@@ -28,12 +34,18 @@ export default function WorkflowsPage(): React.JSX.Element {
     <div className="flex flex-col h-full min-h-0 overflow-hidden bg-background">
       <div className="flex flex-row flex-1 min-h-0 overflow-hidden">
         {!canvasFocused && (
-          <div className="w-[240px] shrink-0 border-r border-border flex flex-col min-h-0 overflow-hidden">
-            <WorkflowList
-              selectedWorkflowId={selectedWorkflow?.id ?? null}
-              onSelect={setSelectedWorkflow}
-            />
-          </div>
+          <>
+            <div
+              className="shrink-0 border-r border-border flex flex-col min-h-0 overflow-hidden"
+              style={{ width: leftWidth }}
+            >
+              <WorkflowList
+                selectedWorkflowId={selectedWorkflow?.id ?? null}
+                onSelect={setSelectedWorkflow}
+              />
+            </div>
+            <PanelDivider direction="horizontal" onDelta={adjustLeft} />
+          </>
         )}
         <div className="flex flex-col flex-1 min-w-0 min-h-0">
           <div className="flex flex-row flex-1 min-h-0">
@@ -48,21 +60,30 @@ export default function WorkflowsPage(): React.JSX.Element {
               />
             </div>
             {selectedNodeId !== null && selectedWorkflow !== null && (
-              <div className="w-[320px] shrink-0 border-l border-border">
-                <WorkflowNodeEditorPanel
-                  key={selectedNodeId}
-                  workflow={selectedWorkflow}
-                  nodeId={selectedNodeId}
-                  onClose={() => setSelectedNodeId(null)}
-                  onWorkflowChange={setSelectedWorkflow}
-                />
-              </div>
+              <>
+                <PanelDivider direction="horizontal" onDelta={(d) => adjustRight(-d)} />
+                <div className="shrink-0 border-l border-border" style={{ width: rightWidth }}>
+                  <WorkflowNodeEditorPanel
+                    key={selectedNodeId}
+                    workflow={selectedWorkflow}
+                    nodeId={selectedNodeId}
+                    onClose={() => setSelectedNodeId(null)}
+                    onWorkflowChange={setSelectedWorkflow}
+                  />
+                </div>
+              </>
             )}
           </div>
           {selectedWorkflow !== null && !canvasFocused && (
-            <div className="border-t border-border h-[220px] shrink-0 overflow-hidden">
-              <WorkflowRunHistory workflowId={selectedWorkflow.id} />
-            </div>
+            <>
+              <PanelDivider direction="vertical" onDelta={(d) => adjustBottom(-d)} />
+              <div
+                className="border-t border-border shrink-0 overflow-hidden"
+                style={{ height: bottomHeight }}
+              >
+                <WorkflowRunHistory workflowId={selectedWorkflow.id} />
+              </div>
+            </>
           )}
         </div>
       </div>

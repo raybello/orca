@@ -177,4 +177,12 @@ export class WorkflowService {
   getWorkflow(id: string): AgentWorkflow | null {
     return this.store.getWorkflowRecord(id)
   }
+
+  activateSchedule(id: string): AgentWorkflow | null {
+    return this.updateWorkflow(id, { enabled: true })
+  }
+
+  deactivateSchedule(id: string): AgentWorkflow | null {
+    return this.updateWorkflow(id, { enabled: false })
+  }
 }

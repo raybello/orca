@@ -89,9 +89,16 @@ export function registerWorkflowHandlers(service: WorkflowService): void {
       service.createWorkflow(partial)
   )
 
-  ipcMain.handle('workflows:update', (_e, id: string, patch: Partial<AgentWorkflow>) =>
-    service.updateWorkflow(id, patch)
-  )
+  ipcMain.handle('workflows:update', (_e, id: string, patch: Partial<AgentWorkflow>) => {
+    // When nodes are patched, auto-clear scheduling if no cron trigger remains
+    if (patch.nodes !== undefined) {
+      const hasCron = patch.nodes.some((n) => n.type === 'trigger_cron')
+      if (!hasCron) {
+        patch = { ...patch, schedule: null, enabled: false }
+      }
+    }
+    return service.updateWorkflow(id, patch)
+  })
 
   ipcMain.handle('workflows:delete', (_e, id: string) => service.deleteWorkflow(id))
 
@@ -100,7 +107,18 @@ export function registerWorkflowHandlers(service: WorkflowService): void {
     if (!workflow) {
       throw new Error(`Workflow ${workflowId} not found.`)
     }
-    return service.runWorkflow(workflow, 'manual')
+    const run = await service.runWorkflow(workflow, 'manual')
+    // First run activates scheduling if a cron trigger is present
+    const hasCron = workflow.nodes.some((n) => n.type === 'trigger_cron')
+    if (hasCron && !workflow.enabled) {
+      service.activateSchedule(workflowId)
+    }
+    return run
+  })
+
+  ipcMain.handle('workflows:stop', (_e, workflowId: string) => {
+    const result = service.deactivateSchedule(workflowId)
+    return result !== null
   })
 
   ipcMain.handle('workflows:cancelRun', (_e, runId: string) => {
@@ -128,7 +146,8 @@ export function unregisterWorkflowHandlers(): void {
     'workflows:delete',
     'workflows:runNow',
     'workflows:cancelRun',
-    'workflows:listModels'
+    'workflows:listModels',
+    'workflows:stop'
   ]) {
     ipcMain.removeHandler(channel)
   }
