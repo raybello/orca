@@ -248,11 +248,16 @@ export default function WorkflowCanvas({
             }
             const sp = effectivePos(src.id, src.pos)
             const tp = effectivePos(tgt.id, tgt.pos)
-            const x1 = sp.x + 80
-            const y1 = sp.y + 24
-            const x2 = tp.x + 80
-            const y2 = tp.y + 24
-            const mx = (x1 + x2) / 2
+            // Connect at node borders (right-mid → left-mid) so the curve
+            // is entirely in free space and never passes through a node.
+            const NODE_W = 160
+            const NODE_H_MID = 24
+            const x1 = sp.x + NODE_W
+            const y1 = sp.y + NODE_H_MID
+            const x2 = tp.x
+            const y2 = tp.y + NODE_H_MID
+            const cp = Math.max(60, Math.abs(x2 - x1) / 2)
+            const d = `M${x1},${y1} C${x1 + cp},${y1} ${x2 - cp},${y2} ${x2},${y2}`
             return (
               <g
                 key={edge.id}
@@ -263,15 +268,10 @@ export default function WorkflowCanvas({
                 }}
               >
                 {/* wide transparent hit area */}
-                <path
-                  d={`M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`}
-                  fill="none"
-                  stroke="transparent"
-                  strokeWidth={12}
-                />
+                <path d={d} fill="none" stroke="transparent" strokeWidth={12} />
                 {/* visible bezier edge */}
                 <path
-                  d={`M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`}
+                  d={d}
                   fill="none"
                   stroke="currentColor"
                   strokeWidth={2.5}
@@ -290,7 +290,7 @@ export default function WorkflowCanvas({
             id={`wf-node-${node.id}`}
             key={node.id}
             className={cn(
-              'absolute select-none rounded-lg border-2 px-3 py-2 shadow-sm transition-shadow min-w-[160px] group',
+              'absolute select-none rounded-lg border-2 px-3 py-2 shadow-sm transition-shadow min-w-[160px] group z-[1]',
               connectingFrom ? 'cursor-crosshair' : 'cursor-move',
               NODE_TYPE_COLORS[node.type],
               selectedNodeId === node.id && 'ring-2 ring-primary ring-offset-1',
