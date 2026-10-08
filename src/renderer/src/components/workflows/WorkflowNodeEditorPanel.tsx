@@ -14,6 +14,7 @@ import { translate } from '@/i18n/i18n'
 import { useDocumentDarkTheme } from '@/hooks/use-document-dark-theme'
 import { useWorkflowLastOutputs } from '@/hooks/use-workflow-last-outputs'
 import WorkflowOutputBrowserDrawer from './WorkflowOutputBrowserDrawer'
+import WorkflowCronScheduleField from './WorkflowCronScheduleField'
 import type { AgentWorkflow } from '../../../../shared/workflow-types'
 import type { TuiAgent } from '../../../../shared/tui-agent'
 import type { WorkflowModel } from '../../../../preload/api/workflow-bridge'
@@ -140,10 +141,18 @@ export default function WorkflowNodeEditorPanel({
     void cronNode
   }
 
-  // Fields to render as plain text inputs (excluding agent-specific dropdowns)
-  const genericFields = Object.keys(localData).filter((k) =>
-    isAgentCall ? k !== 'agentId' && k !== 'model' && k !== 'structuredOutputSchema' : true
-  )
+  const isCronTrigger = node.type === 'trigger_cron'
+
+  // Fields to render as plain text inputs (excluding agent-specific dropdowns and the cron schedule field)
+  const genericFields = Object.keys(localData).filter((k) => {
+    if (isAgentCall && (k === 'agentId' || k === 'model' || k === 'structuredOutputSchema')) {
+      return false
+    }
+    if (isCronTrigger && k === 'schedule') {
+      return false
+    }
+    return true
+  })
 
   const availableModels = modelFetch.state === 'done' ? modelFetch.models : []
   const selectedModel = localData['model'] ?? ''
@@ -232,6 +241,12 @@ export default function WorkflowNodeEditorPanel({
               )}
             </div>
           </>
+        )}
+        {isCronTrigger && (
+          <WorkflowCronScheduleField
+            value={localData['schedule'] ?? ''}
+            onChange={(v) => setLocalData((prev) => ({ ...prev, schedule: v }))}
+          />
         )}
         {genericFields.map((key) => {
           const monacoConfig = MONACO_FIELDS[key]
