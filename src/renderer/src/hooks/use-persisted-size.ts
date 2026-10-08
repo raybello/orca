@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 
 export function usePersistedSize(
   key: string,
@@ -21,22 +21,21 @@ export function usePersistedSize(
     return defaultVal
   })
 
-  // Ref keeps the latest size so adjust doesn't capture a stale value
-  const sizeRef = useRef(size)
-  sizeRef.current = size
+  // Persist to localStorage whenever size changes (not during render)
+  useEffect(() => {
+    try {
+      localStorage.setItem(key, String(size))
+    } catch {
+      // ignore
+    }
+  }, [key, size])
 
+  // Functional updater avoids stale closures without capturing size
   const adjust = useCallback(
     (delta: number) => {
-      const next = Math.min(Math.max(sizeRef.current + delta, min), max)
-      sizeRef.current = next
-      setSize(next)
-      try {
-        localStorage.setItem(key, String(next))
-      } catch {
-        // ignore
-      }
+      setSize((prev) => Math.min(Math.max(prev + delta, min), max))
     },
-    [key, min, max]
+    [min, max]
   )
 
   return [size, adjust]
