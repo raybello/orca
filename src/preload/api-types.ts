@@ -66,6 +66,7 @@ import type { LocalhostWorktreeLabelsApi, WorkspacePortsApi } from './api/worksp
 import type { WorkspaceSessionApi } from './api/workspace-session-api'
 import type { PerforceApi } from './api/perforce-api'
 import type { FolderWorkspacesApi, SparsePresetsApi, WorktreeApi } from './api/worktree-api'
+import type { WorkflowsApi } from './api/workflow-bridge'
 
 // Flattens contracts that share one PreloadApi key: an intersection is not type-identical to the flat shape.
 type Merged<T> = { [K in keyof T]: T[K] }
@@ -155,6 +156,7 @@ export type PreloadApi = {
   cursorAccounts: CursorAccountsApi
   ssh: SshApi
   automations: AutomationsApi
+  workflows: WorkflowsApi
   wsl: RuntimeApi['wsl']
   pwsh: RuntimeApi['pwsh']
   gitBash: RuntimeApi['gitBash']

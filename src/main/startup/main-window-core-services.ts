@@ -1,5 +1,6 @@
 import type { BrowserWindow } from 'electron'
 import { registerCoreHandlers } from '../ipc/register-core-handlers/register-core-handlers'
+import { registerWorkflowHandlers } from '../ipc/workflows'
 import { attachMainWindowServices } from '../window/attach-main-window-services'
 import { initTccPromptNotice } from '../macos-tcc-prompt-notice'
 import { resolveUpdateInstallMode } from '../updater'
@@ -35,6 +36,7 @@ export function attachMainWindowCoreServices(
   const claudeAccounts = state.claudeAccounts
   const rateLimits = state.rateLimits
   const automations = state.automations
+  const workflows = state.workflows
   const keybindings = state.keybindings
   const codexRuntimeHome = state.codexRuntimeHome
   const claudeRuntimeAuth = state.claudeRuntimeAuth
@@ -106,6 +108,11 @@ export function attachMainWindowCoreServices(
   )
   automations.setWebContents(window.webContents)
   automations.start()
+  if (workflows) {
+    registerWorkflowHandlers(workflows)
+    workflows.setWebContents(window.webContents)
+    workflows.start()
+  }
   attachMainWindowServices(
     window,
     store,

@@ -47,6 +47,7 @@ export function shouldShowAgentDashboardButton(
 }
 
 const AgentDashboardSidebarEntry = lazyWithRetry(() => import('./AgentDashboardSidebarEntry'))
+const AgentWorkflowsSidebarEntry = lazyWithRetry(() => import('./AgentWorkflowsSidebarEntry'))
 
 const SidebarNav = React.memo(function SidebarNav() {
   // Why: this memo boundary needs its own language subscription, while
@@ -211,6 +212,9 @@ const SidebarNav = React.memo(function SidebarNav() {
           <AgentDashboardSidebarEntry />
         </React.Suspense>
       ) : null}
+      <React.Suspense fallback={null}>
+        <AgentWorkflowsSidebarEntry />
+      </React.Suspense>
       {showMobileButton ? (
         <ContextMenu>
           <ContextMenuTrigger asChild>

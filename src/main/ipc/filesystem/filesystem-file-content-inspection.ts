@@ -8,10 +8,10 @@ import {
 } from './local-regular-file-read'
 
 // Why: Monaco degrades features on large files like VS Code, so a 5MB block would needlessly lock out ordinary JSON/log files.
-export const MAX_TEXT_FILE_SIZE = 50 * 1024 * 1024 // 50MB
+export const MAX_TEXT_FILE_SIZE = 75 * 1024 * 1024 // 75MB
 export const BINARY_PROBE_BYTES = 8192
-// Why: previewable binaries are base64 blobs (not parsed as text), and local IPC has no frame limit (unlike the relay's 10MB), so 50MB is safe.
-export const MAX_PREVIEWABLE_BINARY_SIZE = 50 * 1024 * 1024 // 50MB
+// Why: previewable binaries are base64 blobs (not parsed as text), and local IPC has no frame limit, so 75MB is safe.
+export const MAX_PREVIEWABLE_BINARY_SIZE = 75 * 1024 * 1024 // 75MB
 export const PREVIEWABLE_BINARY_MIME_TYPES: Record<string, string> = {
   '.png': 'image/png',
   '.avif': 'image/avif',

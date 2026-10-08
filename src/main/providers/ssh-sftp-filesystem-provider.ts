@@ -24,8 +24,8 @@ import { fileStatFromSftpStats, lstatViaSftp, statViaSftp } from './ssh-filesyst
 import type { FileReadLimits, FileReadResult, FileStat, IFilesystemProvider } from './types'
 
 // Why: same caps and probe window as the relay's fs.readFile so previews behave identically.
-const MAX_TEXT_FILE_SIZE = 10 * 1024 * 1024
-const MAX_PREVIEWABLE_BINARY_SIZE = 50 * 1024 * 1024
+const MAX_TEXT_FILE_SIZE = 75 * 1024 * 1024
+const MAX_PREVIEWABLE_BINARY_SIZE = 75 * 1024 * 1024
 const BINARY_PROBE_BYTES = 8192
 const SFTP_NO_SUCH_FILE = 2
 const PREVIEW_MIME_TYPES: Record<string, string> = {

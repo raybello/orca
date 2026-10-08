@@ -1,0 +1,188 @@
+import { randomUUID } from 'node:crypto'
+import type { AgentWorkflow, WorkflowRun } from '../../shared/workflow-types'
+import type { Store } from '../persistence'
+import { executeWorkflow } from './workflow-executor'
+import { findDueWorkflows } from './workflow-scheduler'
+import { buildSshRemoteExec } from './workflow-remote-exec'
+import type { RemoteExecFn } from './workflow-remote-exec'
+import type { SshConnectionManager } from '../ssh/ssh-connection-manager'
+import type { WebContents } from 'electron'
+
+const TICK_MS = 60 * 1000
+
+export class WorkflowService {
+  private timer: ReturnType<typeof setInterval> | null = null
+  private webContents: WebContents | null = null
+  private stopped = false
+  private readonly activeAbortControllers = new Map<string, AbortController>()
+  private sshConnectionManager: SshConnectionManager | null = null
+
+  constructor(private readonly store: Store) {}
+
+  setWebContents(wc: WebContents): void {
+    this.webContents = wc
+  }
+
+  setSshConnectionManager(manager: SshConnectionManager): void {
+    this.sshConnectionManager = manager
+  }
+
+  start(): void {
+    if (this.stopped) {
+      return
+    }
+    this.timer = setInterval(() => void this.tick(), TICK_MS)
+  }
+
+  stop(): void {
+    this.stopped = true
+    if (this.timer) {
+      clearInterval(this.timer)
+      this.timer = null
+    }
+    for (const ac of this.activeAbortControllers.values()) {
+      ac.abort()
+    }
+  }
+
+  private async tick(): Promise<void> {
+    if (this.stopped) {
+      return
+    }
+    const now = Date.now()
+    const workflows = this.store.listWorkflows()
+    const due = findDueWorkflows(workflows, now)
+    for (const wf of due) {
+      if (this.store.getActiveWorkflowRun(wf.id)) {
+        continue
+      }
+      await this.runWorkflow(wf, 'scheduled')
+    }
+  }
+
+  private publish(event: string, payload: unknown): void {
+    if (!this.webContents?.isDestroyed()) {
+      this.webContents?.send(event, payload)
+    }
+  }
+
+  private buildRemoteExec(workflow: AgentWorkflow): RemoteExecFn | undefined {
+    if (workflow.executionTargetType !== 'ssh' || !this.sshConnectionManager) {
+      return undefined
+    }
+    return buildSshRemoteExec(this.sshConnectionManager, workflow.executionTargetId)
+  }
+
+  async runWorkflow(
+    workflow: AgentWorkflow,
+    trigger: WorkflowRun['trigger']
+  ): Promise<WorkflowRun> {
+    const run = this.store.createWorkflowRunRecord(workflow, trigger)
+    const ac = new AbortController()
+    this.activeAbortControllers.set(run.id, ac)
+
+    this.publish('workflows:runUpdated', { workflowId: workflow.id, run })
+
+    const remoteExec = this.buildRemoteExec(workflow)
+
+    void executeWorkflow(
+      workflow,
+      run.id,
+      this.store.asOps(),
+      {
+        onNodeStart: (runId) => {
+          const updated = this.store.listWorkflowRuns(workflow.id).find((r) => r.id === runId)
+          if (updated) {
+            this.publish('workflows:runUpdated', { workflowId: workflow.id, run: updated })
+          }
+        },
+        onNodeComplete: (runId) => {
+          const updated = this.store.listWorkflowRuns(workflow.id).find((r) => r.id === runId)
+          if (updated) {
+            this.publish('workflows:runUpdated', { workflowId: workflow.id, run: updated })
+          }
+        },
+        onRunComplete: (runId) => {
+          this.activeAbortControllers.delete(runId)
+          const updated = this.store.listWorkflowRuns(workflow.id).find((r) => r.id === runId)
+          if (updated) {
+            this.publish('workflows:runUpdated', { workflowId: workflow.id, run: updated })
+          }
+          this.publish('workflows:changed', {
+            workflows: this.store.listWorkflows(),
+            runs: this.store.listWorkflowRuns()
+          })
+        }
+      },
+      ac.signal,
+      remoteExec
+    )
+
+    return run
+  }
+
+  cancelRun(runId: string): void {
+    this.activeAbortControllers.get(runId)?.abort()
+    this.activeAbortControllers.delete(runId)
+    this.store.finalizeWorkflowRunRecord(runId, 'cancelled')
+    const run = this.store.listWorkflowRuns().find((r) => r.id === runId)
+    if (run) {
+      this.publish('workflows:runUpdated', { workflowId: run.workflowId, run })
+    }
+  }
+
+  // ── CRUD ────────────────────────────────────────────────────────────
+
+  createWorkflow(partial: Omit<AgentWorkflow, 'id' | 'createdAt' | 'updatedAt'>): AgentWorkflow {
+    const now = Date.now()
+    const workflow: AgentWorkflow = { ...partial, id: randomUUID(), createdAt: now, updatedAt: now }
+    this.store.createWorkflowRecord(workflow)
+    this.publish('workflows:changed', {
+      workflows: this.store.listWorkflows(),
+      runs: this.store.listWorkflowRuns()
+    })
+    return workflow
+  }
+
+  updateWorkflow(id: string, patch: Partial<AgentWorkflow>): AgentWorkflow | null {
+    const updated = this.store.updateWorkflowRecord(id, patch)
+    if (updated) {
+      this.publish('workflows:changed', {
+        workflows: this.store.listWorkflows(),
+        runs: this.store.listWorkflowRuns()
+      })
+    }
+    return updated
+  }
+
+  deleteWorkflow(id: string): boolean {
+    const deleted = this.store.deleteWorkflowRecord(id)
+    if (deleted) {
+      this.publish('workflows:changed', {
+        workflows: this.store.listWorkflows(),
+        runs: this.store.listWorkflowRuns()
+      })
+    }
+    return deleted
+  }
+
+  listWorkflows(): AgentWorkflow[] {
+    return this.store.listWorkflows()
+  }
+
+  listRuns(workflowId?: string): WorkflowRun[] {
+    return this.store.listWorkflowRuns(workflowId)
+  }
+
+  getWorkflow(id: string): AgentWorkflow | null {
+    return this.store.getWorkflowRecord(id)
+  }
+
+  activateSchedule(id: string): AgentWorkflow | null {
+    return this.updateWorkflow(id, { enabled: true })
+  }
+
+  deactivateSchedule(id: string): AgentWorkflow | null {
+    return this.updateWorkflow(id, { enabled: false })
+  }
+}
