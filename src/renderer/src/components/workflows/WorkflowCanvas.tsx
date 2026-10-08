@@ -154,17 +154,20 @@ export default function WorkflowCanvas({
       cancelAnimationFrame(rafId)
       window.removeEventListener('mousemove', onMouseMove)
       window.removeEventListener('mouseup', onMouseUp)
-      setDraggingPos(null)
       if (!dragRef.current || !workflow) {
+        setDraggingPos(null)
         return
       }
       const dx = ev.clientX - dragRef.current.startX
       const dy = ev.clientY - dragRef.current.startY
       const newPos = { x: dragRef.current.origX + dx, y: dragRef.current.origY + dy }
       dragRef.current = null
+      // Keep draggingPos until the store update resolves so the node
+      // doesn't flash back to its pre-drag position during the IPC round-trip.
       await window.api.workflows.update(workflow.id, {
         nodes: workflow.nodes.map((n) => (n.id === nodeId ? { ...n, pos: newPos } : n))
       })
+      setDraggingPos(null)
     }
     window.addEventListener('mousemove', onMouseMove)
     window.addEventListener('mouseup', onMouseUp)
