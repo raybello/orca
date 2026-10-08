@@ -154,7 +154,7 @@ export default function WorkflowList({ selectedWorkflowId, onSelect }: Props): R
                       variant="ghost"
                       className="size-5"
                       onClick={(e) => openRename(wf, e)}
-                      title="Rename"
+                      title={translate('workflows.list.rename', 'Rename')}
                     >
                       <Pencil className="size-3" />
                     </Button>
@@ -163,7 +163,7 @@ export default function WorkflowList({ selectedWorkflowId, onSelect }: Props): R
                       variant="ghost"
                       className="size-5"
                       onClick={(e) => void handleRunNow(wf.id, e)}
-                      title="Run now"
+                      title={translate('workflows.list.runNow', 'Run now')}
                     >
                       <Play className="size-3" />
                     </Button>
@@ -173,7 +173,7 @@ export default function WorkflowList({ selectedWorkflowId, onSelect }: Props): R
                         variant="ghost"
                         className="size-5"
                         onClick={(e) => void handleStop(wf.id, e)}
-                        title="Stop scheduling"
+                        title={translate('workflows.list.stopScheduling', 'Stop scheduling')}
                       >
                         <Square className="size-3" />
                       </Button>
@@ -183,7 +183,7 @@ export default function WorkflowList({ selectedWorkflowId, onSelect }: Props): R
                       variant="destructive"
                       className="size-5"
                       onClick={(e) => void handleDelete(wf.id, e)}
-                      title="Delete"
+                      title={translate('workflows.list.delete', 'Delete')}
                     >
                       <Trash2 className="size-3" />
                     </Button>
@@ -198,7 +198,7 @@ export default function WorkflowList({ selectedWorkflowId, onSelect }: Props): R
       <Dialog open={renamingId !== null} onOpenChange={(open) => !open && setRenamingId(null)}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Rename Workflow</DialogTitle>
+            <DialogTitle>{translate('workflows.list.renameTitle', 'Rename Workflow')}</DialogTitle>
           </DialogHeader>
           <Input
             value={renameValue}
@@ -210,14 +210,14 @@ export default function WorkflowList({ selectedWorkflowId, onSelect }: Props): R
             }}
             autoFocus
             className="h-8"
-            placeholder="Workflow name"
+            placeholder={translate('workflows.list.namePlaceholder', 'Workflow name')}
           />
           <DialogFooter>
             <Button variant="ghost" size="sm" onClick={() => setRenamingId(null)}>
-              Cancel
+              {translate('workflows.list.cancel', 'Cancel')}
             </Button>
             <Button size="sm" onClick={() => void handleRenameSave()}>
-              Save
+              {translate('workflows.list.save', 'Save')}
             </Button>
           </DialogFooter>
         </DialogContent>

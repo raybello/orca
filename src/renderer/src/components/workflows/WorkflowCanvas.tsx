@@ -197,7 +197,7 @@ export default function WorkflowCanvas({
           variant="outline"
           className="size-7"
           onClick={() => setShowAddMenu((v) => !v)}
-          title="Add node"
+          title={translate('workflows.canvas.addNodeButton', 'Add node')}
         >
           <Plus className="size-3.5" />
         </Button>
@@ -206,7 +206,11 @@ export default function WorkflowCanvas({
           variant="outline"
           className="size-7"
           onClick={focused ? onUnfocus : onFocus}
-          title={focused ? 'Exit focus' : 'Focus canvas'}
+          title={
+            focused
+              ? translate('workflows.canvas.exitFocus', 'Exit focus')
+              : translate('workflows.canvas.focusCanvas', 'Focus canvas')
+          }
         >
           {focused ? <Minimize2 className="size-3.5" /> : <Maximize2 className="size-3.5" />}
         </Button>
@@ -238,7 +242,10 @@ export default function WorkflowCanvas({
       >
         {connectingFrom && (
           <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 bg-primary text-primary-foreground text-[11px] px-2 py-1 rounded shadow pointer-events-none">
-            Click a target node to connect — Esc to cancel
+            {translate(
+              'workflows.canvas.connectHint',
+              'Click a target node to connect — Esc to cancel'
+            )}
           </div>
         )}
         {/* edges — pointer-events enabled so left-click deletes */}
@@ -329,7 +336,7 @@ export default function WorkflowCanvas({
               type="button"
               className="absolute -top-2 -right-2 size-4 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center shadow-sm z-10"
               onClick={(e) => void deleteNode(node.id, e)}
-              title="Delete node"
+              title={translate('workflows.canvas.deleteNode', 'Delete node')}
             >
               <X className="size-2.5" />
             </button>

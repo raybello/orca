@@ -1,4 +1,5 @@
 /* oxlint-disable react-doctor/no-array-index-as-key -- Why: read-only JSON display tree; array items have no stable id and order never changes */
+import { translate } from '@/i18n/i18n'
 import { buildTemplateExpr } from '../../../../shared/workflow-template-path'
 import type { JsonPath } from '../../../../shared/workflow-template-path'
 
@@ -42,7 +43,7 @@ function JsonNode({
     return (
       <span
         className="cursor-pointer hover:bg-primary/10 rounded px-0.5 text-[11px] font-mono"
-        title={`Click to ${onCopyExpr ? 'insert' : 'copy'}: ${expr}`}
+        title={`${translate('workflows.output.clickTo', 'Click to')} ${onCopyExpr ? translate('workflows.output.insert', 'insert') : translate('workflows.output.copy', 'copy')}: ${expr}`}
         onClick={handleClick}
       >
         {JSON.stringify(value)}

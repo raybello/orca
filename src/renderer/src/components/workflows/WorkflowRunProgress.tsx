@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Loader2, CheckCircle2, XCircle, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { translate } from '@/i18n/i18n'
 import type { WorkflowRun, WorkflowNodeRunStatus } from '../../../../shared/workflow-types'
 
 type Props = {
@@ -105,11 +106,11 @@ export default function WorkflowRunProgress({
         {activeRun.status === 'failed' && <XCircle className="size-3 text-destructive" />}
         <span className="text-[11px] font-medium">
           {activeRun.status === 'running'
-            ? `Running… ${activeRun.nodeRuns.filter((nr) => nr.status === 'completed').length}/${activeRun.nodeRuns.length} nodes`
+            ? `${translate('workflows.run.running', 'Running…')} ${activeRun.nodeRuns.filter((nr) => nr.status === 'completed').length}/${activeRun.nodeRuns.length} ${translate('workflows.run.nodes', 'nodes')}`
             : activeRun.status === 'completed'
-              ? 'Run completed'
+              ? translate('workflows.run.completed', 'Run completed')
               : activeRun.status === 'failed'
-                ? `Run failed: ${activeRun.error ?? ''}`
+                ? `${translate('workflows.run.failed', 'Run failed:')} ${activeRun.error ?? ''}`
                 : activeRun.status}
         </span>
       </div>

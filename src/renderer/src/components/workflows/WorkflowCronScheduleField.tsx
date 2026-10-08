@@ -7,28 +7,69 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select'
+import { translate } from '@/i18n/i18n'
 
 type Props = {
   value: string
   onChange: (v: string) => void
 }
 
-const TEMPLATES: { label: string; value: string }[] = [
-  { label: 'Every minute', value: '* * * * *' },
-  { label: 'Every 5 minutes', value: '*/5 * * * *' },
-  { label: 'Every 15 minutes', value: '*/15 * * * *' },
-  { label: 'Every 30 minutes', value: '*/30 * * * *' },
-  { label: 'Every hour', value: '0 * * * *' },
-  { label: 'Every 2 hours', value: '0 */2 * * *' },
-  { label: 'Every 6 hours', value: '0 */6 * * *' },
-  { label: 'Daily at midnight', value: '0 0 * * *' },
-  { label: 'Daily at 6 AM', value: '0 6 * * *' },
-  { label: 'Daily at 8 AM', value: '0 8 * * *' },
-  { label: 'Daily at noon', value: '0 12 * * *' },
-  { label: 'Weekdays at 9 AM (Mon–Fri)', value: '0 9 * * 1-5' },
-  { label: 'Weekly — Monday at 8 AM', value: '0 8 * * 1' },
-  { label: 'Monthly — 1st at midnight', value: '0 0 1 * *' }
-]
+const CRON_VALUES = {
+  everyMinute: '* * * * *',
+  every5m: '*/5 * * * *',
+  every15m: '*/15 * * * *',
+  every30m: '*/30 * * * *',
+  everyHour: '0 * * * *',
+  every2h: '0 */2 * * *',
+  every6h: '0 */6 * * *',
+  dailyMidnight: '0 0 * * *',
+  daily6am: '0 6 * * *',
+  daily8am: '0 8 * * *',
+  dailyNoon: '0 12 * * *',
+  weekdays9am: '0 9 * * 1-5',
+  weeklyMon8am: '0 8 * * 1',
+  monthly1st: '0 0 1 * *'
+}
+
+function getTemplates(): { label: string; value: string }[] {
+  return [
+    {
+      label: translate('workflows.cron.everyMinute', 'Every minute'),
+      value: CRON_VALUES.everyMinute
+    },
+    { label: translate('workflows.cron.every5m', 'Every 5 minutes'), value: CRON_VALUES.every5m },
+    {
+      label: translate('workflows.cron.every15m', 'Every 15 minutes'),
+      value: CRON_VALUES.every15m
+    },
+    {
+      label: translate('workflows.cron.every30m', 'Every 30 minutes'),
+      value: CRON_VALUES.every30m
+    },
+    { label: translate('workflows.cron.everyHour', 'Every hour'), value: CRON_VALUES.everyHour },
+    { label: translate('workflows.cron.every2h', 'Every 2 hours'), value: CRON_VALUES.every2h },
+    { label: translate('workflows.cron.every6h', 'Every 6 hours'), value: CRON_VALUES.every6h },
+    {
+      label: translate('workflows.cron.dailyMidnight', 'Daily at midnight'),
+      value: CRON_VALUES.dailyMidnight
+    },
+    { label: translate('workflows.cron.daily6am', 'Daily at 6 AM'), value: CRON_VALUES.daily6am },
+    { label: translate('workflows.cron.daily8am', 'Daily at 8 AM'), value: CRON_VALUES.daily8am },
+    { label: translate('workflows.cron.dailyNoon', 'Daily at noon'), value: CRON_VALUES.dailyNoon },
+    {
+      label: translate('workflows.cron.weekdays9am', 'Weekdays at 9 AM (Mon–Fri)'),
+      value: CRON_VALUES.weekdays9am
+    },
+    {
+      label: translate('workflows.cron.weeklyMon8am', 'Weekly — Monday at 8 AM'),
+      value: CRON_VALUES.weeklyMon8am
+    },
+    {
+      label: translate('workflows.cron.monthly1st', 'Monthly — 1st at midnight'),
+      value: CRON_VALUES.monthly1st
+    }
+  ]
+}
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
@@ -39,7 +80,7 @@ function fmtHour(h: number): string {
 }
 
 function describeCron(expr: string): string | null {
-  const match = TEMPLATES.find((t) => t.value === expr)
+  const match = getTemplates().find((t) => t.value === expr)
   if (match) {
     return match.label
   }
@@ -104,17 +145,18 @@ function describeCron(expr: string): string | null {
 }
 
 export default function WorkflowCronScheduleField({ value, onChange }: Props): React.JSX.Element {
+  const templates = getTemplates()
   const [showCustom, setShowCustom] = useState(
-    value !== '' && !TEMPLATES.some((t) => t.value === value)
+    value !== '' && !templates.some((t) => t.value === value)
   )
 
-  const matchedTemplate = TEMPLATES.find((t) => t.value === value)?.value ?? '__custom__'
+  const matchedTemplate = templates.find((t) => t.value === value)?.value ?? '__custom__'
   const description = describeCron(value)
 
   return (
     <div className="space-y-2">
       <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-        Schedule
+        {translate('workflows.cron.schedule', 'Schedule')}
       </span>
       <Select
         value={showCustom ? '__custom__' : matchedTemplate}
@@ -128,22 +170,29 @@ export default function WorkflowCronScheduleField({ value, onChange }: Props): R
         }}
       >
         <SelectTrigger className="h-7">
-          <SelectValue placeholder="Choose a template…" />
+          <SelectValue
+            placeholder={translate('workflows.cron.choosePlaceholder', 'Choose a template…')}
+          />
         </SelectTrigger>
         <SelectContent>
-          {TEMPLATES.map((t) => (
+          {templates.map((t) => (
             <SelectItem key={t.value} value={t.value}>
               {t.label}
             </SelectItem>
           ))}
-          <SelectItem value="__custom__">Custom expression…</SelectItem>
+          <SelectItem value="__custom__">
+            {translate('workflows.cron.customExpression', 'Custom expression…')}
+          </SelectItem>
         </SelectContent>
       </Select>
-      {(showCustom || !TEMPLATES.some((t) => t.value === value)) && (
+      {(showCustom || !templates.some((t) => t.value === value)) && (
         <Input
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="* * * * *  (min hour dom month dow)"
+          placeholder={translate(
+            'workflows.cron.cronPlaceholder',
+            '* * * * *  (min hour dom month dow)'
+          )}
           className="h-7"
           variant="mono"
           spellCheck={false}

@@ -27,14 +27,25 @@ type Props = {
 }
 
 // Agents that support non-interactive (-p / --quiet) execution in workflows
-const WORKFLOW_AGENTS: { value: TuiAgent; label: string }[] = [
-  { value: 'claude', label: 'Claude (claude -p)' },
-  { value: 'cursor', label: 'Cursor (cursor-agent -p)' },
-  { value: 'codex', label: 'Codex (codex --quiet)' },
-  { value: 'gemini', label: 'Gemini (gemini -p)' },
-  { value: 'amp', label: 'Amp (amp -p)' },
-  { value: 'opencode', label: 'OpenCode (opencode -p)' }
-]
+function getWorkflowAgents(): { value: TuiAgent; label: string }[] {
+  return [
+    { value: 'claude', label: translate('workflows.nodeEditor.agentClaude', 'Claude (claude -p)') },
+    {
+      value: 'cursor',
+      label: translate('workflows.nodeEditor.agentCursor', 'Cursor (cursor-agent -p)')
+    },
+    {
+      value: 'codex',
+      label: translate('workflows.nodeEditor.agentCodex', 'Codex (codex --quiet)')
+    },
+    { value: 'gemini', label: translate('workflows.nodeEditor.agentGemini', 'Gemini (gemini -p)') },
+    { value: 'amp', label: translate('workflows.nodeEditor.agentAmp', 'Amp (amp -p)') },
+    {
+      value: 'opencode',
+      label: translate('workflows.nodeEditor.agentOpenCode', 'OpenCode (opencode -p)')
+    }
+  ]
+}
 
 type ModelFetch =
   | { state: 'loading' }
@@ -42,10 +53,18 @@ type ModelFetch =
   | { state: 'error' }
 
 // Fields that get a Monaco editor instead of a plain text input
-const MONACO_FIELDS: Record<string, { language: string; label: string }> = {
-  script: { language: 'python', label: 'Script' },
-  command: { language: 'shell', label: 'Command' },
-  expression: { language: 'javascript', label: 'Expression' }
+function getMonacoFields(): Record<string, { language: string; label: string }> {
+  return {
+    script: { language: 'python', label: translate('workflows.nodeEditor.fieldScript', 'Script') },
+    command: {
+      language: 'shell',
+      label: translate('workflows.nodeEditor.fieldCommand', 'Command')
+    },
+    expression: {
+      language: 'javascript',
+      label: translate('workflows.nodeEditor.fieldExpression', 'Expression')
+    }
+  }
 }
 
 export default function WorkflowNodeEditorPanel({
@@ -179,7 +198,7 @@ export default function WorkflowNodeEditorPanel({
           <>
             <div className="space-y-1">
               <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                Agent
+                {translate('workflows.nodeEditor.agent', 'Agent')}
               </span>
               <Select
                 value={currentAgent}
@@ -191,7 +210,7 @@ export default function WorkflowNodeEditorPanel({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {WORKFLOW_AGENTS.map((a) => (
+                  {getWorkflowAgents().map((a) => (
                     <SelectItem key={a.value} value={a.value}>
                       {a.label}
                     </SelectItem>
@@ -201,22 +220,25 @@ export default function WorkflowNodeEditorPanel({
             </div>
             <div className="space-y-1">
               <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                Model
+                {translate('workflows.nodeEditor.model', 'Model')}
               </span>
               {modelFetch.state === 'loading' && (
                 <div className="flex items-center gap-1.5 h-7 text-[12px] text-muted-foreground">
                   <Loader2 className="size-3 animate-spin" />
-                  <span>Loading models…</span>
+                  <span>{translate('workflows.nodeEditor.loadingModels', 'Loading models…')}</span>
                 </div>
               )}
               {modelFetch.state === 'error' && (
                 <div className="h-7 flex items-center text-[12px] text-muted-foreground">
-                  Could not fetch models — enter manually
+                  {translate(
+                    'workflows.nodeEditor.modelsError',
+                    'Could not fetch models — enter manually'
+                  )}
                 </div>
               )}
               {modelFetch.state === 'done' && availableModels.length === 0 && (
                 <div className="h-7 flex items-center text-[12px] text-muted-foreground">
-                  No models found for this agent
+                  {translate('workflows.nodeEditor.noModels', 'No models found for this agent')}
                 </div>
               )}
               {modelFetch.state === 'done' && availableModels.length > 0 && (
@@ -230,7 +252,9 @@ export default function WorkflowNodeEditorPanel({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__default__">Default</SelectItem>
+                    <SelectItem value="__default__">
+                      {translate('workflows.nodeEditor.modelDefault', 'Default')}
+                    </SelectItem>
                     {availableModels.map((m) => (
                       <SelectItem key={m.id} value={m.id}>
                         {m.label}
@@ -249,7 +273,7 @@ export default function WorkflowNodeEditorPanel({
           />
         )}
         {genericFields.map((key) => {
-          const monacoConfig = MONACO_FIELDS[key]
+          const monacoConfig = getMonacoFields()[key]
           if (monacoConfig) {
             return (
               <div key={key} className="space-y-1">
