@@ -19467,7 +19467,13 @@
       "fileWriteMode": "Mode",
       "fileWriteModeOverwrite": "Overwrite",
       "fileWriteModeAppend": "Append",
-      "createParents": "Create parent directories"
+      "createParents": "Create parent directories",
+      "agentCustom": "Custom executable…",
+      "customExe": "Executable",
+      "customArgs": "Arg template",
+      "customArgsHint": "{prompt} is replaced with the resolved prompt at run time.",
+      "detectingAgents": "Detecting agents…",
+      "noAgentsFound": "No agents detected — using custom"
     },
     "output": {
       "clickTo": "Click to",
