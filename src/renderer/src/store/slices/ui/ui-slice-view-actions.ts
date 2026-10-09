@@ -102,6 +102,8 @@ export function createUiViewActions(set: UISliceSet, get: UISliceGet): Partial<U
       set((state) => ({
         activeView: state.previousViewBeforeMobile
       })),
+    selectedWorkflowId: null,
+    setSelectedWorkflowId: (id) => set({ selectedWorkflowId: id }),
     openWorkflowsPage: () => {
       set((state) => ({
         activeView: 'workflows',
