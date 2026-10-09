@@ -199,6 +199,8 @@ export type UISliceCore = {
   closeArtifactsPage: () => void
   openMobilePage: () => void
   closeMobilePage: () => void
+  selectedWorkflowId: string | null
+  setSelectedWorkflowId: (id: string | null) => void
   openWorkflowsPage: () => void
   closeWorkflowsPage: () => void
   setNewWorkspaceDraft: (draft: NonNullable<UISliceCore['newWorkspaceDraft']>) => void

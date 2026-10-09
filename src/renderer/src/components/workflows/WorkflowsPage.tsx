@@ -1,16 +1,41 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import WorkflowList from './WorkflowList'
 import WorkflowCanvas from './WorkflowCanvas'
 import WorkflowNodeEditorPanel from './WorkflowNodeEditorPanel'
 import WorkflowBottomPanel from './WorkflowBottomPanel'
 import PanelDivider from './PanelDivider'
 import { usePersistedSize } from '@/hooks/use-persisted-size'
+import { useAppStore } from '@/store'
 import type { AgentWorkflow } from '../../../../shared/workflow-types'
 
 export default function WorkflowsPage(): React.JSX.Element {
   const [canvasFocused, setCanvasFocused] = useState(false)
   const [selectedWorkflow, setSelectedWorkflow] = useState<AgentWorkflow | null>(null)
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
+
+  const storedWorkflowId = useAppStore((s) => s.selectedWorkflowId)
+  const setSelectedWorkflowId = useAppStore((s) => s.setSelectedWorkflowId)
+  // Capture the stored ID at mount time so the restore effect has a stable ref
+  const restoreIdRef = useRef(storedWorkflowId)
+
+  // Restore last-selected workflow on mount
+  useEffect(() => {
+    const id = restoreIdRef.current
+    if (!id) {
+      return
+    }
+    void window.api.workflows.list().then((wfs) => {
+      const match = wfs.find((w) => w.id === id)
+      if (match) {
+        setSelectedWorkflow(match)
+      }
+    })
+  }, [])
+
+  function handleSelect(wf: AgentWorkflow | null): void {
+    setSelectedWorkflow(wf)
+    setSelectedWorkflowId(wf?.id ?? null)
+  }
 
   const [leftWidth, adjustLeft] = usePersistedSize('wf-panel-left', 240, 160, 420)
   const [rightWidth, adjustRight] = usePersistedSize('wf-panel-right', 320, 200, 520)
@@ -41,7 +66,7 @@ export default function WorkflowsPage(): React.JSX.Element {
             >
               <WorkflowList
                 selectedWorkflowId={selectedWorkflow?.id ?? null}
-                onSelect={setSelectedWorkflow}
+                onSelect={handleSelect}
               />
             </div>
             <PanelDivider direction="horizontal" onDelta={adjustLeft} />

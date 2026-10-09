@@ -29,6 +29,9 @@ export function createOpenFileAction(
         editorItemIsPreview: false
       }
       set((s) => applyOpenFileToState(s, file, options, scratch))
+      if (get().activeView === 'workflows') {
+        get().closeWorkflowsPage()
+      }
       const editorItemViewStateId = openWorkspaceEditorItem(
         get(),
         scratch.editorItemFileId,
