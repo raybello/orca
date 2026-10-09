@@ -26,7 +26,7 @@ jobs:
   code_paths:
     name: detect changes and check repository guards
     # Reuse one lightweight checkout for detection and the always-required guards.
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
       contents: read
@@ -1391,7 +1391,7 @@ jobs:
       - package
       - package_windows
     # Evaluating job results only needs the lightweight container runner.
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-latest
     timeout-minutes: 5
 
     steps:
