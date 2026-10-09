@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useLayoutEffect } from 'react'
 import { Loader2 } from 'lucide-react'
 import {
   Select,
@@ -53,10 +53,12 @@ export default function WorkflowAgentNodeFields({
   const isCustomAgent = currentAgent === 'custom'
 
   const currentAgentRef = useRef(currentAgent)
-  currentAgentRef.current = currentAgent
-  // Stable ref so the detect effect doesn't re-run when onDataChange's identity changes
   const onDataChangeRef = useRef(onDataChange)
-  onDataChangeRef.current = onDataChange
+  // Keep refs current without mutating during render (concurrent-mode safe)
+  useLayoutEffect(() => {
+    currentAgentRef.current = currentAgent
+    onDataChangeRef.current = onDataChange
+  })
 
   useEffect(() => {
     const targetId = isRemote ? executionTargetId : undefined
