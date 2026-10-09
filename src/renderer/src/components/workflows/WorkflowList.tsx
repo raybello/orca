@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Plus, Trash2, Play, Pencil, Square } from 'lucide-react'
 import WorkflowTipsCard from './WorkflowTipsCard'
+import WorkflowCreateDialog from './WorkflowCreateDialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -52,6 +53,7 @@ function WorkflowStatusDot({ status }: { status: WorkflowStatus }): React.JSX.El
 export default function WorkflowList({ selectedWorkflowId, onSelect }: Props): React.JSX.Element {
   const [workflows, setWorkflows] = useState<AgentWorkflow[]>([])
   const [runs, setRuns] = useState<WorkflowRun[]>([])
+  const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
 
@@ -65,19 +67,9 @@ export default function WorkflowList({ selectedWorkflowId, onSelect }: Props): R
     return unsub
   }, [])
 
-  async function handleCreate(): Promise<void> {
-    const wf = await window.api.workflows.create({
-      name: 'New Workflow',
-      description: '',
-      schedule: null,
-      enabled: false,
-      executionTargetType: 'local',
-      executionTargetId: 'local',
-      nodes: [],
-      edges: []
-    })
+  function handleCreated(wf: AgentWorkflow): void {
     onSelect(wf)
-    // immediately open rename dialog
+    setCreateDialogOpen(false)
     setRenamingId(wf.id)
     setRenameValue(wf.name)
   }
@@ -116,6 +108,12 @@ export default function WorkflowList({ selectedWorkflowId, onSelect }: Props): R
 
   return (
     <>
+      <WorkflowCreateDialog
+        key={String(createDialogOpen)}
+        open={createDialogOpen}
+        onClose={() => setCreateDialogOpen(false)}
+        onCreate={handleCreated}
+      />
       <div className="flex flex-col h-full min-h-0">
         <div className="flex items-center justify-between px-3 py-2 border-b border-border shrink-0">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -125,7 +123,7 @@ export default function WorkflowList({ selectedWorkflowId, onSelect }: Props): R
             size="icon"
             variant="ghost"
             className="size-6"
-            onClick={() => void handleCreate()}
+            onClick={() => setCreateDialogOpen(true)}
           >
             <Plus className="size-3.5" />
           </Button>

@@ -1,6 +1,7 @@
 import { runProcess } from '../../shared/child-process/run-process'
 import type { AgentCallData } from '../../shared/workflow-types'
 import type { TuiAgent } from '../../shared/tui-agent'
+import type { RemoteExecFn } from './workflow-remote-exec'
 
 export type AgentNodeResult = {
   stdout: string
@@ -31,10 +32,45 @@ function buildAgentArgs(
   }
 }
 
+/** Build a shell-safe single-string command for running an agent CLI over SSH. */
+function buildAgentRemoteCommand(
+  agentId: TuiAgent,
+  prompt: string,
+  structuredOutput: boolean,
+  model?: string
+): string {
+  // Escape single-quotes in the prompt so it is safe inside '…'
+  const escapedPrompt = prompt.replace(/'/g, `'\\''`)
+  const modelFlag = model ? `--model ${model} ` : ''
+  const jsonFlag = structuredOutput ? '--output-format json ' : ''
+  if (agentId === 'claude') {
+    return `claude -p ${modelFlag}${jsonFlag}'${escapedPrompt}'`
+  }
+  if (agentId === 'codex') {
+    return `codex --quiet ${modelFlag}'${escapedPrompt}'`
+  }
+  return `cursor-agent -p ${modelFlag}${jsonFlag}'${escapedPrompt}'`
+}
+
 export async function runAgentCallNode(
   data: AgentCallData,
-  resolvedPrompt: string
+  resolvedPrompt: string,
+  remoteExec?: RemoteExecFn,
+  signal?: AbortSignal
 ): Promise<AgentNodeResult> {
+  if (remoteExec) {
+    const command = buildAgentRemoteCommand(
+      data.agentId,
+      resolvedPrompt,
+      data.structuredOutputSchema !== null,
+      data.model
+    )
+    const result = await remoteExec(command, {
+      signal,
+      timeoutMs: data.timeoutSeconds * 1000
+    })
+    return { stdout: result.stdout, stderr: result.stderr, exitCode: result.exitCode }
+  }
   const { program, args } = buildAgentArgs(
     data.agentId,
     resolvedPrompt,

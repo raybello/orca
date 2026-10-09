@@ -63,7 +63,7 @@ async function executeNode(
         throw new Error('Cancelled')
       }
       const prompt = resolveField(node.data.prompt, steps)
-      const r = await runAgentCallNode(node.data, prompt)
+      const r = await runAgentCallNode(node.data, prompt, remoteExec, signal)
       let parsed: unknown = null
       if (node.data.structuredOutputSchema) {
         try {

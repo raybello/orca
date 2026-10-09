@@ -19512,6 +19512,22 @@
       "prev": "Previous tip",
       "next": "Next tip",
       "dotLabel": "Tip {{n}}"
+    },
+    "create": {
+      "defaultName": "New Workflow",
+      "title": "Create Workflow",
+      "nameLabel": "Name",
+      "namePlaceholder": "Workflow name",
+      "runOnLabel": "Run on",
+      "localTarget": "This machine",
+      "sshTarget": "SSH Remote",
+      "sshConnectionLabel": "SSH Connection",
+      "noSshConnections": "No SSH connections saved. Add one in Settings → SSH.",
+      "sshConnected": "connected",
+      "sshConnect": "Connect",
+      "sshHint": "Shell, Python, and agent nodes will run on the remote machine. The agent CLI must be installed there.",
+      "cancel": "Cancel",
+      "create": "Create"
     }
   }
 }

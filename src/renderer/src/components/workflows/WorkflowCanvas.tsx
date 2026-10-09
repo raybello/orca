@@ -9,6 +9,7 @@ import { usePersistedCanvasPan } from '@/hooks/use-persisted-canvas-pan'
 import WorkflowCanvasEdgesLayer from './WorkflowCanvasEdgesLayer'
 import WorkflowAddNodeMenu from './WorkflowAddNodeMenu'
 import WorkflowCanvasNode from './WorkflowCanvasNode'
+import WorkflowExecutionTargetBadge from './WorkflowExecutionTargetBadge'
 import type { AgentWorkflow, WorkflowNodeType } from '../../../../shared/workflow-types'
 
 const CANVAS_W = 4000
@@ -269,6 +270,11 @@ export default function WorkflowCanvas({
       )}
       onMouseDown={handleViewportMouseDown}
     >
+      {/* Execution target badge — viewport overlay, top left */}
+      <div className="absolute top-2 left-2 z-10" onMouseDown={(e) => e.stopPropagation()}>
+        <WorkflowExecutionTargetBadge workflow={workflow} />
+      </div>
+
       {/* Focus toggle — viewport overlay, top right */}
       <div className="absolute top-2 right-2 z-10">
         <Button
