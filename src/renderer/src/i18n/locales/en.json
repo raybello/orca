@@ -19510,7 +19510,8 @@
       "heading": "Tips",
       "dismiss": "Dismiss tips",
       "prev": "Previous tip",
-      "next": "Next tip"
+      "next": "Next tip",
+      "dotLabel": "Tip {{n}}"
     }
   }
 }

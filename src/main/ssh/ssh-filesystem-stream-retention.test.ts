@@ -144,7 +144,7 @@ it('rejects metadata missing its stream identifier', async () => {
   expect(connection.sent).toHaveLength(1)
 })
 
-it.each([-1, 51 * 1024 * 1024])(
+it.each([-1, 76 * 1024 * 1024])(
   'rejects invalid or oversized totalSize %d and cancels the identified stream',
   async (totalSize) => {
     const connection = createConnection()

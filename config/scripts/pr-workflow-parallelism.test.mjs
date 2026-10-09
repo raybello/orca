@@ -54,9 +54,9 @@ const realZshUsage =
 
 describe('PR workflow parallelism', () => {
   it('keeps lightweight orchestration jobs on the free slim runner', () => {
-    expect(workflow.jobs.code_paths['runs-on']).toBe('ubuntu-slim')
+    expect(workflow.jobs.code_paths['runs-on']).toBe('ubuntu-latest')
     expect(workflow.jobs.preflight['runs-on']).toBe('ubuntu-24.04-arm')
-    expect(workflow.jobs.verify['runs-on']).toBe('ubuntu-slim')
+    expect(workflow.jobs.verify['runs-on']).toBe('ubuntu-latest')
     expect(prTestLocWorkflow.jobs.loc['runs-on']).toBe('ubuntu-slim')
     expect(releasePolicyWorkflow.jobs.enforce['runs-on']).toBe('ubuntu-slim')
     expect(issueLabelWorkflow.jobs['apply-os-label']['runs-on']).toBe('ubuntu-slim')

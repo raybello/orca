@@ -99,7 +99,7 @@ export default function WorkflowTipsCard(): React.JSX.Element | null {
                 i === index ? 'bg-foreground/60' : 'bg-foreground/20 hover:bg-foreground/40'
               )}
               onClick={() => setIndex(i)}
-              aria-label={`Tip ${i + 1}`}
+              aria-label={translate('workflows.tips.dotLabel', 'Tip {{n}}', { n: i + 1 })}
             />
           ))}
         </div>

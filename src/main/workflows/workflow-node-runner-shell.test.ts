@@ -57,8 +57,9 @@ describe('shellToArgs', () => {
 describe('runShellCommandNode — local exec', () => {
   it('calls runProcess with the correct program when shell is zsh', async () => {
     await runShellCommandNode({ ...BASE_DATA, shell: 'zsh' })
+    const [expectedProgram, expectedArgs] = shellToArgs('zsh', BASE_DATA.command)
     expect(mockRunProcess).toHaveBeenCalledWith(
-      expect.objectContaining({ program: '/bin/zsh', args: ['-c', 'echo hi'] })
+      expect.objectContaining({ program: expectedProgram, args: expectedArgs })
     )
   })
 

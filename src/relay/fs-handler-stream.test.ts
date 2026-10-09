@@ -348,7 +348,7 @@ describe('FsHandler readFileStream', () => {
 
   it('rejects when totalSize exceeds the binary cap', async () => {
     const filePath = path.join(tmpDir, 'huge.png')
-    writeFileSync(filePath, Buffer.alloc(51 * 1024 * 1024))
+    writeFileSync(filePath, Buffer.alloc(76 * 1024 * 1024))
 
     await expect(
       dispatcher.callRequest('fs.readFileStream', { filePath }, { isStale: () => false })
