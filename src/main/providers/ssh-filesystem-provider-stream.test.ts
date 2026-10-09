@@ -169,7 +169,7 @@ describe('SshFilesystemProvider readFile streaming', () => {
   it('rejects when totalSize exceeds client cap without allocating', async () => {
     mux._response.mockResolvedValue({
       streamId: 1,
-      totalSize: 51 * 1024 * 1024,
+      totalSize: 76 * 1024 * 1024,
       isBinary: true,
       chunkEncoding: 'base64',
       resultEncoding: 'base64'
