@@ -437,14 +437,14 @@ describe('registerFilesystemHandlers', () => {
   })
 
   it('rejects text files beyond the editor read budget', async () => {
-    const handle = localFileHandleMock(Buffer.alloc(0), { size: 51 * 1024 * 1024 })
+    const handle = localFileHandleMock(Buffer.alloc(0), { size: 76 * 1024 * 1024 })
     openMock.mockResolvedValue(handle)
 
     registerFilesystemHandlers(store as never)
 
     await expect(
       handlers.get('fs:readFile')!(null, { filePath: path.resolve('/workspace/repo/huge.json') })
-    ).rejects.toThrow('exceeds 50MB limit')
+    ).rejects.toThrow('exceeds 75MB limit')
 
     expect(handle.read).not.toHaveBeenCalled()
     expect(handle.close).toHaveBeenCalled()
