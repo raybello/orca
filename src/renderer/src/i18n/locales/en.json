@@ -19528,6 +19528,9 @@
       "sshHint": "Shell, Python, and agent nodes will run on the remote machine. The agent CLI must be installed there.",
       "cancel": "Cancel",
       "create": "Create"
+    },
+    "executionTarget": {
+      "local": "Local"
     }
   }
 }
