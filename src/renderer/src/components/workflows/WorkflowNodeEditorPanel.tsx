@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { toast } from 'sonner'
 import { X, Loader2 } from 'lucide-react'
 import Editor from '@monaco-editor/react'
 import { Button } from '@/components/ui/button'
@@ -12,8 +13,6 @@ import {
 } from '@/components/ui/select'
 import { translate } from '@/i18n/i18n'
 import { useDocumentDarkTheme } from '@/hooks/use-document-dark-theme'
-import { useWorkflowLastOutputs } from '@/hooks/use-workflow-last-outputs'
-import WorkflowOutputBrowserDrawer from './WorkflowOutputBrowserDrawer'
 import WorkflowCronScheduleField from './WorkflowCronScheduleField'
 import type { AgentWorkflow } from '../../../../shared/workflow-types'
 import type { TuiAgent } from '../../../../shared/tui-agent'
@@ -67,6 +66,16 @@ function getMonacoFields(): Record<string, { language: string; label: string }> 
   }
 }
 
+function getAvailableShells(): string[] {
+  if (navigator.userAgent.includes('Win')) {
+    return ['powershell', 'cmd']
+  }
+  if (navigator.userAgent.includes('Mac')) {
+    return ['zsh', 'bash', 'sh']
+  }
+  return ['bash', 'sh', 'zsh', 'tcsh']
+}
+
 export default function WorkflowNodeEditorPanel({
   workflow,
   nodeId,
@@ -75,7 +84,6 @@ export default function WorkflowNodeEditorPanel({
 }: Props): React.JSX.Element {
   const node = workflow.nodes.find((n) => n.id === nodeId)
   const isDark = useDocumentDarkTheme()
-  const lastOutputs = useWorkflowLastOutputs(workflow.id)
 
   // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: node.data is a plain record; exact shape varies by node type but all values are serializable
   const [localData, setLocalData] = useState<Record<string, string>>(
@@ -90,10 +98,10 @@ export default function WorkflowNodeEditorPanel({
   // Per-agent model cache — persists across agent switches in the same panel mount
   const modelCache = useRef<Map<TuiAgent, ModelFetch>>(new Map())
   const [modelFetch, setModelFetch] = useState<ModelFetch>({ state: 'loading' })
-  // Track insertion target for output browser
-  const [insertTarget, setInsertTarget] = useState<string | null>(null)
 
   const isAgentCall = node?.type === 'agent_call'
+  const isShellCommand = node?.type === 'shell_command'
+  const isFileWrite = node?.type === 'file_write'
   // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: localData is built from node.data which has agentId: TuiAgent; string cast is safe here
   const currentAgent = (localData['agentId'] as TuiAgent | undefined) ?? 'claude'
 
@@ -123,30 +131,17 @@ export default function WorkflowNodeEditorPanel({
       })
   }, [isAgentCall, currentAgent])
 
-  const handleInsertExpr = useCallback(
-    (expr: string) => {
-      if (insertTarget) {
-        setLocalData((prev) => ({
-          ...prev,
-          [insertTarget]: (prev[insertTarget] ?? '') + expr
-        }))
-      }
-    },
-    [insertTarget]
-  )
-
-  if (!node) {
-    return <div />
-  }
-
-  async function handleSave(): Promise<void> {
+  const handleSave = useCallback(async (): Promise<void> => {
+    if (!node) {
+      return
+    }
     const updatedNodes = workflow.nodes.map((n) =>
       n.id === nodeId ? { ...n, data: { ...n.data, ...localData } } : n
     )
     // Sync cron trigger node schedule to workflow.schedule
     const cronNode = updatedNodes.find((n) => n.type === 'trigger_cron')
     const schedulePatch =
-      node?.type === 'trigger_cron' && localData['schedule'] !== undefined
+      node.type === 'trigger_cron' && localData['schedule'] !== undefined
         ? { schedule: localData['schedule'] || null }
         : {}
     const updated = await window.api.workflows.update(workflow.id, {
@@ -156,18 +151,44 @@ export default function WorkflowNodeEditorPanel({
     })
     if (updated) {
       onWorkflowChange(updated)
+      toast.success(translate('workflows.node.saved', 'Node saved'))
     }
     void cronNode
+  }, [node, nodeId, localData, workflow, onWorkflowChange])
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent): void => {
+      if (!(e.metaKey || e.ctrlKey) || e.key !== 's') {
+        return
+      }
+      e.preventDefault()
+      void handleSave()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [handleSave])
+
+  if (!node) {
+    return <div />
   }
 
   const isCronTrigger = node.type === 'trigger_cron'
 
-  // Fields to render as plain text inputs (excluding agent-specific dropdowns and the cron schedule field)
+  // Fields to render as plain text inputs (excluding agent-specific dropdowns, cron schedule, and shell selector)
   const genericFields = Object.keys(localData).filter((k) => {
     if (isAgentCall && (k === 'agentId' || k === 'model' || k === 'structuredOutputSchema')) {
       return false
     }
     if (isCronTrigger && k === 'schedule') {
+      return false
+    }
+    if (isShellCommand && k === 'shell') {
+      return false
+    }
+    if (isFileWrite && k === 'mode') {
+      return false
+    }
+    if (isFileWrite && k === 'createParents') {
       return false
     }
     return true
@@ -180,18 +201,9 @@ export default function WorkflowNodeEditorPanel({
     <div className="flex flex-col h-full min-h-0 overflow-hidden">
       <div className="flex items-center justify-between px-3 py-2 border-b border-border shrink-0">
         <span className="text-[13px] font-semibold">{node.type.replace(/_/g, ' ')}</span>
-        <div className="flex items-center gap-1">
-          {lastOutputs && Object.keys(lastOutputs).length > 0 && (
-            <WorkflowOutputBrowserDrawer
-              workflow={workflow}
-              lastOutputs={lastOutputs}
-              onInsert={handleInsertExpr}
-            />
-          )}
-          <Button size="icon" variant="ghost" className="size-6" onClick={onClose}>
-            <X className="size-3.5" />
-          </Button>
-        </div>
+        <Button size="icon" variant="ghost" className="size-6" onClick={onClose}>
+          <X className="size-3.5" />
+        </Button>
       </div>
       <div className="flex-1 overflow-y-auto scrollbar-sleek p-3 space-y-3">
         {isAgentCall && (
@@ -272,6 +284,63 @@ export default function WorkflowNodeEditorPanel({
             onChange={(v) => setLocalData((prev) => ({ ...prev, schedule: v }))}
           />
         )}
+        {isShellCommand && (
+          <div className="space-y-1">
+            <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              {translate('workflows.nodeEditor.shell', 'Shell')}
+            </span>
+            <Select
+              value={localData['shell'] ?? ''}
+              onValueChange={(v) => setLocalData((prev) => ({ ...prev, shell: v }))}
+            >
+              <SelectTrigger className="h-7">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {getAvailableShells().map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+        {isFileWrite && (
+          <>
+            <div className="space-y-1">
+              <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                {translate('workflows.nodeEditor.fileWriteMode', 'Mode')}
+              </span>
+              <Select
+                value={localData['mode'] ?? 'overwrite'}
+                onValueChange={(v) => setLocalData((prev) => ({ ...prev, mode: v }))}
+              >
+                <SelectTrigger className="h-7">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="overwrite">
+                    {translate('workflows.nodeEditor.fileWriteModeOverwrite', 'Overwrite')}
+                  </SelectItem>
+                  <SelectItem value="append">
+                    {translate('workflows.nodeEditor.fileWriteModeAppend', 'Append')}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <label className="flex items-center gap-2 text-[12px] cursor-pointer">
+              <input
+                type="checkbox"
+                checked={localData['createParents'] !== 'false'}
+                onChange={(e) =>
+                  setLocalData((prev) => ({ ...prev, createParents: String(e.target.checked) }))
+                }
+              />
+              {translate('workflows.nodeEditor.createParents', 'Create parent directories')}
+            </label>
+          </>
+        )}
         {genericFields.map((key) => {
           const monacoConfig = getMonacoFields()[key]
           if (monacoConfig) {
@@ -283,8 +352,6 @@ export default function WorkflowNodeEditorPanel({
                 <div
                   className="rounded border border-border overflow-hidden"
                   style={{ height: 180 }}
-                  onFocus={() => setInsertTarget(key)}
-                  onBlur={() => setInsertTarget(null)}
                 >
                   <Editor
                     value={localData[key]}
@@ -314,8 +381,6 @@ export default function WorkflowNodeEditorPanel({
               <Input
                 value={localData[key]}
                 onChange={(e) => setLocalData((prev) => ({ ...prev, [key]: e.target.value }))}
-                onFocus={() => setInsertTarget(key)}
-                onBlur={() => setInsertTarget(null)}
                 className="h-7"
               />
             </div>

@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { translate } from '@/i18n/i18n'
+import { NODE_TYPE_LABELS } from './workflow-canvas-node-config'
 import type {
   WorkflowRun,
   WorkflowNodeRun,
@@ -61,6 +62,14 @@ function nodeStatusClass(status: WorkflowNodeRunStatus): string {
   }
 }
 
+// Truncate full UUIDs in stored error strings (old-format runs used the full id)
+function formatRunError(error: string): string {
+  return error.replace(
+    /\b([0-9a-f]{8})-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/g,
+    (_, first8: string) => first8
+  )
+}
+
 function formatDuration(ms: number | null): string {
   if (ms === null) {
     return ''
@@ -101,7 +110,10 @@ function NodeRunRow({
       >
         <NodeStatusIcon status={nr.status} />
         <span className={cn('font-medium', nodeStatusClass(nr.status))}>{nr.status}</span>
-        <span className="text-muted-foreground truncate flex-1">{nr.nodeId.slice(0, 12)}</span>
+        <span className="font-medium text-foreground/80 shrink-0 w-20 truncate">
+          {NODE_TYPE_LABELS[nr.nodeType]}
+        </span>
+        <span className="text-muted-foreground truncate flex-1">{nr.nodeId.slice(0, 8)}</span>
         <span className="text-muted-foreground font-mono">{formatDuration(nr.durationMs)}</span>
         {hasOutput && (
           <span className="text-muted-foreground">
@@ -159,11 +171,6 @@ export default function WorkflowRunHistory({ workflowId }: Props): React.JSX.Ele
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <div className="px-3 py-1.5 border-b border-border shrink-0">
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-          {translate('workflows.history.title', 'Run History')}
-        </span>
-      </div>
       <div className="flex-1 overflow-y-auto scrollbar-sleek min-h-0">
         {runs.length === 0 ? (
           <div className="px-3 py-3 text-[12px] text-muted-foreground">
@@ -208,16 +215,24 @@ export default function WorkflowRunHistory({ workflowId }: Props): React.JSX.Ele
                   </span>
                 </button>
                 {run.error && !isExpanded && (
-                  <div className="px-3 text-[10px] text-destructive pb-1 truncate">{run.error}</div>
+                  <div className="px-3 text-[10px] text-destructive pb-1 truncate">
+                    {formatRunError(run.error)}
+                  </div>
                 )}
                 {isExpanded && (
                   <div className="px-3 pb-2 space-y-0.5">
-                    {run.nodeRuns.map((nr: WorkflowNodeRun) => (
-                      <NodeRunRow key={nr.nodeId} nr={nr} isAutoExpanded={nr.status === 'failed'} />
-                    ))}
+                    {[...run.nodeRuns]
+                      .sort((a, b) => (a.startedAt ?? Infinity) - (b.startedAt ?? Infinity))
+                      .map((nr: WorkflowNodeRun) => (
+                        <NodeRunRow
+                          key={nr.nodeId}
+                          nr={nr}
+                          isAutoExpanded={nr.status === 'failed'}
+                        />
+                      ))}
                     {run.error && (
                       <div className="text-[10px] text-destructive font-mono mt-1 px-1">
-                        {run.error}
+                        {formatRunError(run.error)}
                       </div>
                     )}
                   </div>

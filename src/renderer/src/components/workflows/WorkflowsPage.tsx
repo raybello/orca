@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import WorkflowList from './WorkflowList'
 import WorkflowCanvas from './WorkflowCanvas'
 import WorkflowNodeEditorPanel from './WorkflowNodeEditorPanel'
-import WorkflowRunHistory from './WorkflowRunHistory'
+import WorkflowBottomPanel from './WorkflowBottomPanel'
 import PanelDivider from './PanelDivider'
 import { usePersistedSize } from '@/hooks/use-persisted-size'
 import type { AgentWorkflow } from '../../../../shared/workflow-types'
@@ -81,7 +81,7 @@ export default function WorkflowsPage(): React.JSX.Element {
                 className="border-t border-border shrink-0 overflow-hidden"
                 style={{ height: bottomHeight }}
               >
-                <WorkflowRunHistory workflowId={selectedWorkflow.id} />
+                <WorkflowBottomPanel workflowId={selectedWorkflow.id} />
               </div>
             </>
           )}

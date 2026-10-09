@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Plus, Trash2, Play, Pencil, Square } from 'lucide-react'
+import WorkflowTipsCard from './WorkflowTipsCard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -129,69 +130,72 @@ export default function WorkflowList({ selectedWorkflowId, onSelect }: Props): R
             <Plus className="size-3.5" />
           </Button>
         </div>
-        <div className="flex-1 overflow-y-auto scrollbar-sleek min-h-0">
-          {workflows.length === 0 ? (
-            <div className="px-3 py-4 text-[13px] text-muted-foreground">
-              {translate('workflows.list.empty', 'No workflows yet. Click + to create one.')}
-            </div>
-          ) : (
-            workflows.map((wf) => {
-              const status = getWorkflowStatus(wf, runs)
-              return (
-                <div
-                  key={wf.id}
-                  onClick={() => onSelect(wf)}
-                  className={cn(
-                    'group flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-muted/50 border-b border-border/50',
-                    selectedWorkflowId === wf.id && 'bg-muted'
-                  )}
-                >
-                  <WorkflowStatusDot status={status} />
-                  <span className="flex-1 text-[13px] truncate font-medium">{wf.name}</span>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="size-5"
-                      onClick={(e) => openRename(wf, e)}
-                      title={translate('workflows.list.rename', 'Rename')}
-                    >
-                      <Pencil className="size-3" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="size-5"
-                      onClick={(e) => void handleRunNow(wf.id, e)}
-                      title={translate('workflows.list.runNow', 'Run now')}
-                    >
-                      <Play className="size-3" />
-                    </Button>
-                    {wf.enabled && (
+        <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+          <div className="flex-1 overflow-y-auto scrollbar-sleek min-h-0">
+            {workflows.length === 0 ? (
+              <div className="px-3 py-4 text-[13px] text-muted-foreground">
+                {translate('workflows.list.empty', 'No workflows yet. Click + to create one.')}
+              </div>
+            ) : (
+              workflows.map((wf) => {
+                const status = getWorkflowStatus(wf, runs)
+                return (
+                  <div
+                    key={wf.id}
+                    onClick={() => onSelect(wf)}
+                    className={cn(
+                      'group flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-muted/50 border-b border-border/50',
+                      selectedWorkflowId === wf.id && 'bg-muted'
+                    )}
+                  >
+                    <WorkflowStatusDot status={status} />
+                    <span className="flex-1 text-[13px] truncate font-medium">{wf.name}</span>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
                       <Button
                         size="icon"
                         variant="ghost"
                         className="size-5"
-                        onClick={(e) => void handleStop(wf.id, e)}
-                        title={translate('workflows.list.stopScheduling', 'Stop scheduling')}
+                        onClick={(e) => openRename(wf, e)}
+                        title={translate('workflows.list.rename', 'Rename')}
                       >
-                        <Square className="size-3" />
+                        <Pencil className="size-3" />
                       </Button>
-                    )}
-                    <Button
-                      size="icon"
-                      variant="destructive"
-                      className="size-5"
-                      onClick={(e) => void handleDelete(wf.id, e)}
-                      title={translate('workflows.list.delete', 'Delete')}
-                    >
-                      <Trash2 className="size-3" />
-                    </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="size-5"
+                        onClick={(e) => void handleRunNow(wf.id, e)}
+                        title={translate('workflows.list.runNow', 'Run now')}
+                      >
+                        <Play className="size-3" />
+                      </Button>
+                      {wf.enabled && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="size-5"
+                          onClick={(e) => void handleStop(wf.id, e)}
+                          title={translate('workflows.list.stopScheduling', 'Stop scheduling')}
+                        >
+                          <Square className="size-3" />
+                        </Button>
+                      )}
+                      <Button
+                        size="icon"
+                        variant="destructive"
+                        className="size-5"
+                        onClick={(e) => void handleDelete(wf.id, e)}
+                        title={translate('workflows.list.delete', 'Delete')}
+                      >
+                        <Trash2 className="size-3" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              )
-            })
-          )}
+                )
+              })
+            )}
+          </div>
+          <WorkflowTipsCard />
         </div>
       </div>
 

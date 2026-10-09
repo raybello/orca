@@ -8,6 +8,19 @@ export type ShellNodeResult = {
   exitCode: number | null
 }
 
+export function shellToArgs(shell: string, cmd: string): [string, string[]] {
+  const s = shell.toLowerCase()
+  if (s === 'powershell' || s === 'powershell.exe') {
+    return ['powershell.exe', ['-Command', cmd]]
+  }
+  if (s === 'cmd' || s === 'cmd.exe') {
+    return ['cmd.exe', ['/c', cmd]]
+  }
+  // Unix shells (zsh, bash, sh, tcsh, …) — treat bare names as /bin/<name>
+  const program = shell.startsWith('/') ? shell : `/bin/${shell}`
+  return [program, ['-c', cmd]]
+}
+
 export async function runShellCommandNode(
   data: ShellCommandData,
   stdin?: string,
@@ -22,9 +35,14 @@ export async function runShellCommandNode(
     })
     return { stdout: result.stdout, stderr: result.stderr, exitCode: result.exitCode }
   }
+  const defaultArgs: [string, string[]] =
+    process.platform === 'win32'
+      ? ['powershell.exe', ['-Command', data.command]]
+      : ['/bin/sh', ['-c', data.command]]
+  const [program, args] = data.shell ? shellToArgs(data.shell, data.command) : defaultArgs
   const result = await runProcess({
-    program: process.platform === 'win32' ? 'cmd.exe' : '/bin/sh',
-    args: process.platform === 'win32' ? ['/c', data.command] : ['-c', data.command],
+    program,
+    args,
     cwd: data.workingDirectory || undefined,
     env: data.env,
     timeoutMs: data.timeoutSeconds * 1000,
