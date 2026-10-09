@@ -22,6 +22,7 @@ export type ShellCommandData = {
   command: string
   workingDirectory: string
   timeoutSeconds: number
+  shell?: string
   env?: Record<string, string>
 }
 

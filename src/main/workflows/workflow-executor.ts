@@ -174,7 +174,12 @@ export async function executeWorkflow(
         error,
         durationMs
       })
-      finalizeWorkflowRun(ops, runId, 'failed', `Node ${node.id} failed: ${error}`)
+      finalizeWorkflowRun(
+        ops,
+        runId,
+        'failed',
+        `Node ${node.type} ${node.id.slice(0, 8)} failed: ${error}`
+      )
       callbacks.onRunComplete?.(runId)
       return
     }

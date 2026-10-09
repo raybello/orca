@@ -46,7 +46,15 @@ function JsonNode({
         title={`${translate('workflows.output.clickTo', 'Click to')} ${onCopyExpr ? translate('workflows.output.insert', 'insert') : translate('workflows.output.copy', 'copy')}: ${expr}`}
         onClick={handleClick}
       >
-        {JSON.stringify(value)}
+        {typeof value === 'string' ? (
+          value.includes('\n') ? (
+            <span className="whitespace-pre-wrap">{value}</span>
+          ) : (
+            value
+          )
+        ) : (
+          JSON.stringify(value)
+        )}
       </span>
     )
   }

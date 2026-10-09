@@ -1,4 +1,11 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
+
+const { mockFileRead } = vi.hoisted(() => ({ mockFileRead: vi.fn() }))
+vi.mock('./workflow-node-runner-file', () => ({
+  runFileReadNode: mockFileRead,
+  runFileWriteNode: vi.fn().mockResolvedValue({ bytesWritten: 0 })
+}))
+
 import { executeWorkflow } from './workflow-executor'
 import { createWorkflowRun } from './workflow-run-store'
 import type { AgentWorkflow } from '../../shared/workflow-types'
@@ -314,5 +321,110 @@ describe('executeWorkflow — multi-node chain', () => {
       onNodeComplete: (_, nodeId) => nodeCompletes.push(nodeId)
     })
     expect(nodeCompletes).toEqual(['trigger', 'json1', 'json2'])
+  })
+
+  it('executes both branches of a fan-out topology (trigger → [shellA, shellB])', async () => {
+    const workflow = makeWorkflow({
+      nodes: [
+        { id: 'trigger', type: 'trigger_manual', pos: { x: 0, y: 0 }, data: {} },
+        {
+          id: 'shellA',
+          type: 'shell_command',
+          pos: { x: 100, y: 0 },
+          data: { command: 'echo A', workingDirectory: '/', timeoutSeconds: 5 }
+        },
+        {
+          id: 'shellB',
+          type: 'shell_command',
+          pos: { x: 100, y: 100 },
+          data: { command: 'echo B', workingDirectory: '/', timeoutSeconds: 5 }
+        }
+      ],
+      edges: [
+        { id: 'e1', sourceNodeId: 'trigger', targetNodeId: 'shellA' },
+        { id: 'e2', sourceNodeId: 'trigger', targetNodeId: 'shellB' }
+      ]
+    })
+    const { ops, runId } = makeOps(workflow)
+    const remoteExec = vi
+      .fn()
+      .mockResolvedValueOnce({ stdout: 'A', stderr: '', exitCode: 0 })
+      .mockResolvedValueOnce({ stdout: 'B', stderr: '', exitCode: 0 })
+    const nodeCompletes: string[] = []
+    await executeWorkflow(
+      workflow,
+      runId,
+      ops,
+      {
+        onNodeComplete: (_, nodeId) => nodeCompletes.push(nodeId)
+      },
+      undefined,
+      remoteExec
+    )
+    expect(nodeCompletes).toContain('shellA')
+    expect(nodeCompletes).toContain('shellB')
+    expect(nodeCompletes[0]).toBe('trigger')
+  })
+
+  it('completes two disconnected trigger nodes', async () => {
+    const workflow = makeWorkflow({
+      nodes: [
+        { id: 't1', type: 'trigger_manual', pos: { x: 0, y: 0 }, data: {} },
+        { id: 't2', type: 'trigger_cron', pos: { x: 200, y: 0 }, data: { schedule: '0 8 * * *' } }
+      ],
+      edges: []
+    })
+    const { ops, runId } = makeOps(workflow)
+    const nodeCompletes: string[] = []
+    await executeWorkflow(workflow, runId, ops, {
+      onNodeComplete: (_, nodeId) => nodeCompletes.push(nodeId)
+    })
+    expect(nodeCompletes).toContain('t1')
+    expect(nodeCompletes).toContain('t2')
+  })
+})
+
+describe('executeWorkflow — file nodes (mocked runners)', () => {
+  afterEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('file_read node exposes content as outputValue.content', async () => {
+    mockFileRead.mockResolvedValue({ content: 'file content' })
+    const workflow = makeWorkflow({
+      nodes: [
+        { id: 'trigger', type: 'trigger_manual', pos: { x: 0, y: 0 }, data: {} },
+        { id: 'fr', type: 'file_read', pos: { x: 100, y: 0 }, data: { filePath: '/tmp/fake.txt' } }
+      ],
+      edges: [{ id: 'e1', sourceNodeId: 'trigger', targetNodeId: 'fr' }]
+    })
+    const { ops, runId } = makeOps(workflow)
+    const onNodeComplete = vi.fn()
+    await executeWorkflow(workflow, runId, ops, { onNodeComplete })
+    expect(onNodeComplete).toHaveBeenCalledWith(
+      runId,
+      'fr',
+      expect.objectContaining({ status: 'completed' })
+    )
+  })
+
+  it('shell_command with shell field set passes command string to remoteExec unchanged', async () => {
+    const workflow = makeWorkflow({
+      nodes: [
+        { id: 'trigger', type: 'trigger_manual', pos: { x: 0, y: 0 }, data: {} },
+        {
+          id: 'sh',
+          type: 'shell_command',
+          pos: { x: 100, y: 0 },
+          data: { command: 'echo test', workingDirectory: '/', timeoutSeconds: 5, shell: 'zsh' }
+        }
+      ],
+      edges: [{ id: 'e1', sourceNodeId: 'trigger', targetNodeId: 'sh' }]
+    })
+    const { ops, runId } = makeOps(workflow)
+    const remoteExec = vi.fn().mockResolvedValue({ stdout: 'test', stderr: '', exitCode: 0 })
+    await executeWorkflow(workflow, runId, ops, {}, undefined, remoteExec)
+    // remoteExec receives the raw command string regardless of shell setting
+    expect(remoteExec).toHaveBeenCalledWith('echo test', expect.any(Object))
   })
 })

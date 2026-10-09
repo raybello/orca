@@ -1,4 +1,26 @@
+import {
+  Clock,
+  Play,
+  Terminal,
+  Code2,
+  Bot,
+  FileText,
+  FilePen,
+  Mail,
+  Braces,
+  type LucideIcon
+} from 'lucide-react'
 import type { WorkflowNode, WorkflowNodeType } from '../../../../shared/workflow-types'
+
+function defaultShell(): string {
+  if (navigator.userAgent.includes('Win')) {
+    return 'powershell'
+  }
+  if (navigator.userAgent.includes('Mac')) {
+    return 'zsh'
+  }
+  return 'bash'
+}
 
 export const NODE_TYPE_LABELS: Record<WorkflowNodeType, string> = {
   trigger_cron: 'Cron Trigger',
@@ -10,6 +32,30 @@ export const NODE_TYPE_LABELS: Record<WorkflowNodeType, string> = {
   file_write: 'File Write',
   email_send: 'Email Send',
   json_transform: 'JSON Transform'
+}
+
+export const NODE_TYPE_ICON_COLORS: Record<WorkflowNodeType, string> = {
+  trigger_cron: 'text-violet-500',
+  trigger_manual: 'text-violet-500',
+  shell_command: 'text-slate-500',
+  python_script: 'text-blue-500',
+  agent_call: 'text-emerald-500',
+  file_read: 'text-amber-500',
+  file_write: 'text-orange-500',
+  email_send: 'text-pink-500',
+  json_transform: 'text-cyan-500'
+}
+
+export const NODE_TYPE_ICONS: Record<WorkflowNodeType, LucideIcon> = {
+  trigger_cron: Clock,
+  trigger_manual: Play,
+  shell_command: Terminal,
+  python_script: Code2,
+  agent_call: Bot,
+  file_read: FileText,
+  file_write: FilePen,
+  email_send: Mail,
+  json_transform: Braces
 }
 
 export const NODE_TYPE_COLORS: Record<WorkflowNodeType, string> = {
@@ -59,6 +105,18 @@ export const ADD_NODE_TYPES: WorkflowNodeType[] = [
   'json_transform'
 ]
 
+export const TRIGGER_NODE_TYPES: WorkflowNodeType[] = ['trigger_manual', 'trigger_cron']
+
+export const ACTION_NODE_TYPES: WorkflowNodeType[] = [
+  'shell_command',
+  'python_script',
+  'agent_call',
+  'file_read',
+  'file_write',
+  'json_transform',
+  'email_send'
+]
+
 export function buildDefaultNode(
   id: string,
   type: WorkflowNodeType,
@@ -70,7 +128,12 @@ export function buildDefaultNode(
     case 'trigger_manual':
       return { id, type, pos, data: {} }
     case 'shell_command':
-      return { id, type, pos, data: { command: '', workingDirectory: '', timeoutSeconds: 30 } }
+      return {
+        id,
+        type,
+        pos,
+        data: { command: '', workingDirectory: '', timeoutSeconds: 30, shell: defaultShell() }
+      }
     case 'python_script':
       return {
         id,

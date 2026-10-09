@@ -1,98 +1,108 @@
 import { describe, it, expect } from 'vitest'
 import { topologicalSort, findTriggerNodes } from './workflow-graph-topology'
-import type { AgentWorkflow } from './workflow-types'
+import type { AgentWorkflow, WorkflowNode } from './workflow-types'
 
-function makeWorkflow(partial: Partial<AgentWorkflow>): AgentWorkflow {
+function makeWf(nodes: WorkflowNode[], edges: AgentWorkflow['edges'] = []): AgentWorkflow {
   return {
-    id: 'w1',
+    id: 'w',
     name: 'Test',
     description: '',
     schedule: null,
     enabled: true,
     executionTargetType: 'local',
     executionTargetId: 'local',
-    nodes: [],
-    edges: [],
+    nodes,
+    edges,
     createdAt: 0,
-    updatedAt: 0,
-    ...partial
+    updatedAt: 0
   }
 }
 
+function node(id: string): WorkflowNode {
+  return { id, type: 'trigger_manual', pos: { x: 0, y: 0 }, data: {} }
+}
+
+function shell(id: string): WorkflowNode {
+  return {
+    id,
+    type: 'shell_command',
+    pos: { x: 0, y: 0 },
+    data: { command: 'echo', workingDirectory: '/', timeoutSeconds: 5 }
+  }
+}
+
+function edge(id: string, src: string, tgt: string): AgentWorkflow['edges'][number] {
+  return { id, sourceNodeId: src, targetNodeId: tgt }
+}
+
 describe('topologicalSort', () => {
-  it('returns empty for empty workflow', () => {
-    expect(topologicalSort(makeWorkflow({}))).toEqual([])
+  it('returns empty array for empty workflow', () => {
+    expect(topologicalSort(makeWf([]))).toEqual([])
   })
-  it('sorts linear chain correctly', () => {
-    const w = makeWorkflow({
-      nodes: [
-        { id: 'a', type: 'trigger_manual', pos: { x: 0, y: 0 }, data: {} },
-        {
-          id: 'b',
-          type: 'shell_command',
-          pos: { x: 0, y: 0 },
-          data: { command: 'ls', workingDirectory: '/', timeoutSeconds: 10 }
-        },
-        {
-          id: 'c',
-          type: 'shell_command',
-          pos: { x: 0, y: 0 },
-          data: { command: 'echo', workingDirectory: '/', timeoutSeconds: 10 }
-        }
-      ],
-      edges: [
-        { id: 'e1', sourceNodeId: 'a', targetNodeId: 'b' },
-        { id: 'e2', sourceNodeId: 'b', targetNodeId: 'c' }
-      ]
-    })
-    const sorted = topologicalSort(w)
-    expect(sorted?.map((n) => n.id)).toEqual(['a', 'b', 'c'])
+
+  it('returns single node for workflow with no edges', () => {
+    const n = node('a')
+    expect(topologicalSort(makeWf([n]))).toEqual([n])
   })
-  it('returns null for cycle', () => {
-    const w = makeWorkflow({
-      nodes: [
-        {
-          id: 'a',
-          type: 'shell_command',
-          pos: { x: 0, y: 0 },
-          data: { command: 'ls', workingDirectory: '/', timeoutSeconds: 10 }
-        },
-        {
-          id: 'b',
-          type: 'shell_command',
-          pos: { x: 0, y: 0 },
-          data: { command: 'ls', workingDirectory: '/', timeoutSeconds: 10 }
-        }
-      ],
-      edges: [
-        { id: 'e1', sourceNodeId: 'a', targetNodeId: 'b' },
-        { id: 'e2', sourceNodeId: 'b', targetNodeId: 'a' }
-      ]
-    })
-    expect(topologicalSort(w)).toBeNull()
+
+  it('returns linear chain in order A→B→C', () => {
+    const [a, b, c] = [node('a'), shell('b'), shell('c')]
+    const result = topologicalSort(makeWf([a, b, c], [edge('e1', 'a', 'b'), edge('e2', 'b', 'c')]))
+    expect(result?.map((n) => n.id)).toEqual(['a', 'b', 'c'])
+  })
+
+  it('returns valid order for diamond topology (A→B, A→C, B→D, C→D)', () => {
+    const [a, b, c, d] = [node('a'), shell('b'), shell('c'), shell('d')]
+    const result = topologicalSort(
+      makeWf(
+        [a, b, c, d],
+        [edge('e1', 'a', 'b'), edge('e2', 'a', 'c'), edge('e3', 'b', 'd'), edge('e4', 'c', 'd')]
+      )
+    )
+    expect(result).not.toBeNull()
+    expect(result!.map((n) => n.id)[0]).toBe('a')
+    expect(result!.map((n) => n.id).at(-1)).toBe('d')
+  })
+
+  it('returns null for cycle A→B, B→A', () => {
+    const [a, b] = [node('a'), shell('b')]
+    expect(topologicalSort(makeWf([a, b], [edge('e1', 'a', 'b'), edge('e2', 'b', 'a')]))).toBeNull()
+  })
+
+  it('returns null when edge references non-existent node', () => {
+    const a = node('a')
+    expect(topologicalSort(makeWf([a], [edge('e1', 'a', 'ghost')]))).toBeNull()
+  })
+
+  it('includes disconnected nodes', () => {
+    const [a, b] = [node('a'), node('b')]
+    const result = topologicalSort(makeWf([a, b]))
+    expect(result).not.toBeNull()
+    expect(result!.length).toBe(2)
   })
 })
 
 describe('findTriggerNodes', () => {
-  it('finds trigger node with no incoming edges', () => {
-    const w = makeWorkflow({
-      nodes: [
-        {
-          id: 'trigger',
-          type: 'trigger_cron',
-          pos: { x: 0, y: 0 },
-          data: { schedule: '0 8 * * *' }
-        },
-        {
-          id: 'step',
-          type: 'shell_command',
-          pos: { x: 0, y: 0 },
-          data: { command: 'ls', workingDirectory: '/', timeoutSeconds: 10 }
-        }
-      ],
-      edges: [{ id: 'e1', sourceNodeId: 'trigger', targetNodeId: 'step' }]
-    })
-    const triggers = findTriggerNodes(w)
-    expect(triggers.map((n) => n.id)).toEqual(['trigger'])
+  it('returns trigger nodes with no incoming edges', () => {
+    const [a, b] = [node('a'), shell('b')]
+    const result = findTriggerNodes(makeWf([a, b], [edge('e1', 'a', 'b')]))
+    expect(result.map((n) => n.id)).toEqual(['a'])
+  })
+
+  it('excludes trigger node that has an incoming edge', () => {
+    const [a, b] = [node('a'), node('b')]
+    // b is a trigger type but has an incoming edge — shouldn't be returned
+    const result = findTriggerNodes(makeWf([a, b], [edge('e1', 'a', 'b')]))
+    expect(result.map((n) => n.id)).toEqual(['a'])
+  })
+
+  it('excludes non-trigger nodes', () => {
+    const [a, b] = [node('a'), shell('b')]
+    const result = findTriggerNodes(makeWf([a, b]))
+    expect(result.map((n) => n.id)).toEqual(['a'])
+  })
+
+  it('returns empty when workflow has no nodes', () => {
+    expect(findTriggerNodes(makeWf([]))).toEqual([])
   })
 })
