@@ -156,7 +156,10 @@ export default function WorkflowAgentNodeFields({
               type="text"
               value={localData['customExecutable'] ?? ''}
               onChange={(e) => onDataChange({ customExecutable: e.target.value })}
-              placeholder="/usr/local/bin/myagent"
+              placeholder={translate(
+                'workflows.nodeEditor.customExePlaceholder',
+                '/usr/local/bin/myagent'
+              )}
               className="w-full h-7 rounded-md border border-input bg-background px-2 font-mono text-[12px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
             />
           </div>
@@ -168,7 +171,10 @@ export default function WorkflowAgentNodeFields({
               type="text"
               value={localData['customArgTemplate'] ?? ''}
               onChange={(e) => onDataChange({ customArgTemplate: e.target.value })}
-              placeholder='-p "{prompt}" -m sonnet-4.5'
+              placeholder={translate(
+                'workflows.nodeEditor.customArgsPlaceholder',
+                '-p "{prompt}" -m sonnet-4.5'
+              )}
               className="w-full h-7 rounded-md border border-input bg-background px-2 font-mono text-[12px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
             />
             <p className="text-[10px] text-muted-foreground">
