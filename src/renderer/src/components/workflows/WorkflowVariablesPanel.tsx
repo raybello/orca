@@ -118,7 +118,7 @@ export default function WorkflowVariablesPanel(): React.JSX.Element {
         </p>
         <div className="flex gap-2">
           <Input
-            className="h-7"
+            className="h-7 flex-1"
             placeholder={translate('workflows.variablesPanel.keyPlaceholder', 'KEY')}
             value={editKey}
             disabled={!!editing}
@@ -128,7 +128,7 @@ export default function WorkflowVariablesPanel(): React.JSX.Element {
             value={editKind}
             onValueChange={(v) => setEditKind(v === 'secret' ? 'secret' : 'plaintext')}
           >
-            <SelectTrigger size="sm" className="h-7 w-28 shrink-0">
+            <SelectTrigger size="sm" className="h-7 w-36 shrink-0">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
