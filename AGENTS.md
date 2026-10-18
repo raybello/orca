@@ -51,6 +51,11 @@ Avoid type assertions except `as const`. Unavoidable casts need a line-specific 
 
 # Writing Pull Requests
 
+Open every pull request against this fork: `raybello/orca`. NEVER open, create, or target
+`stablyai/orca` — no `gh pr create --repo stablyai/orca`, no upstream remote, no exceptions.
+Push branches to `fork` (`raybello/orca`) only, and omit `--repo` (or pass `--repo raybello/orca`)
+so `gh` defaults to the fork remote's repository.
+
 Fill in [`.github/pull_request_template.md`](./.github/pull_request_template.md), written for a reviewer who has never seen this code:
 
 - No jargon — plain language, no internal shorthand.
