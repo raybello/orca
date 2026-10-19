@@ -49,6 +49,7 @@ export function EditorContent({
   isMermaid,
   isCsv,
   isNotebook,
+  isWaveform,
   mdViewMode,
   inlineMarkdownRenderState,
   isChangesMode,
@@ -77,6 +78,7 @@ export function EditorContent({
   isMermaid: boolean
   isCsv: boolean
   isNotebook: boolean
+  isWaveform: boolean
   mdViewMode: MarkdownViewMode
   inlineMarkdownRenderState: MarkdownRenderState | null
   isChangesMode: boolean
@@ -254,6 +256,7 @@ export function EditorContent({
         isMermaid={isMermaid}
         isCsv={isCsv}
         isNotebook={isNotebook}
+        isWaveform={isWaveform}
         mdViewMode={mdViewMode}
         inlineMarkdownRenderState={inlineMarkdownRenderState}
         isChangesMode={isChangesMode}
