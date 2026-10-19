@@ -8,7 +8,15 @@
 import { randomUUID } from 'node:crypto'
 import { arch as osArch, platform as osPlatform, release as osRelease } from 'node:os'
 import { getAppEnvironment } from '../../shared/app-environment'
-import { PostHog } from 'posthog-node'
+// PostHog dependency removed - using no-op stub
+class PostHog {
+  constructor(_apiKey: string, _options?: unknown) {}
+  capture(_event: string, _properties?: unknown) {}
+  shutdown(_timeout?: number) {}
+  optIn() {}
+  optOut() {}
+  on(_event: string, _handler: unknown) {}
+}
 import type { CommonProps, EventName, EventProps, OptInVia } from '../../shared/telemetry-events'
 import type { Store } from '../persistence'
 import { consumeBurstToken, resetBurstCapsForSession } from './burst-cap'
@@ -18,7 +26,8 @@ import { commonPropsSchema, validate } from './validator'
 
 // Compile-time feature flag, independent of the build-identity gate — both must be satisfied to transmit.
 // NOTE: config/scripts/verify-telemetry-constants.mjs greps `const TELEMETRY_ENABLED = true|false`; keep that shape or update its regex.
-const TELEMETRY_ENABLED = true
+// TELEMETRY DISABLED: Completely disabled for privacy - no analytics data is collected or sent
+const TELEMETRY_ENABLED = false
 
 // Eligible to transmit only if CI injected BOTH build-identity and write key; either alone fails closed, with no runtime env-var override (dev/contributor builds get `null`).
 // The `globalThis` reads are for vitest, which skips electron-vite's `define` pass — resolving to `IS_OFFICIAL_BUILD === false` there.
