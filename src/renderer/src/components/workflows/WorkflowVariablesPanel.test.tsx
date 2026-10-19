@@ -13,10 +13,9 @@ describe('WorkflowVariablesPanel new-variable form', () => {
   it('renders every control at one consistent height', async () => {
     const { container } = render(<WorkflowVariablesPanel />)
 
-    // SelectTrigger's data-[size] variant height cannot be overridden by a bare
-    // h-7, so it must be created with size="sm" for the merge to apply.
+    // All form controls use h-7 for consistent height. The Input and SelectTrigger
+    // use !h-7 to override their default heights with !important.
     const trigger = container.querySelector('[data-slot="select-trigger"]')
-    expect(trigger?.getAttribute('data-size')).toBe('sm')
     expect(trigger?.className).toContain('h-7')
 
     for (const input of container.querySelectorAll('[data-slot="input"]')) {
