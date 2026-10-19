@@ -20,8 +20,7 @@ export function useWorkflowSlashCommand(): WorkflowRouteArmer {
   const activeWatchRef = useRef<{ exit: () => void } | null>(null)
 
   useEffect(() => {
-    const active = activeWatchRef.current
-    return () => active?.exit()
+    return () => activeWatchRef.current?.exit()
   }, [])
 
   return useCallback(() => {
