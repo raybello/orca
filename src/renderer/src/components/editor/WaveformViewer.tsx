@@ -1,4 +1,4 @@
-import { type JSX, useEffect, useRef, useState } from 'react'
+import { type JSX, useCallback, useEffect, useRef, useState } from 'react'
 import { FileChartColumn } from 'lucide-react'
 import { translate } from '@/i18n/i18n'
 
@@ -11,6 +11,56 @@ export default function WaveformViewer({ content, filePath }: WaveformViewerProp
   const iframeRef = useRef<HTMLIFrameElement | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const waveformDataUriRef = useRef<string | null>(null)
+
+  // Convert file content to data URI
+  useEffect(() => {
+    try {
+      const base64Content = btoa(content)
+      waveformDataUriRef.current = `data:application/octet-stream;base64,${base64Content}`
+    } catch (error) {
+      console.error('Failed to encode waveform content:', error)
+      setLoadError('Failed to encode waveform file')
+    }
+  }, [content])
+
+  // Handle messages from the iframe
+  const handleMessage = useCallback((event: MessageEvent) => {
+    const iframe = iframeRef.current
+    if (!iframe || !iframe.contentWindow) {
+      return
+    }
+
+    // Check if message is from our iframe
+    if (event.source !== iframe.contentWindow) {
+      return
+    }
+
+    // Handle the 'loaded' message from surfer
+    if (event.data?.command === 'loaded') {
+      console.log('Surfer viewer loaded, sending waveform file...')
+      setIsLoading(false)
+
+      // Send the waveform file to the viewer
+      if (waveformDataUriRef.current) {
+        iframe.contentWindow.postMessage(
+          {
+            command: 'LoadUrl',
+            url: waveformDataUriRef.current
+          },
+          '*'
+        )
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    // Add message listener
+    window.addEventListener('message', handleMessage)
+    return () => {
+      window.removeEventListener('message', handleMessage)
+    }
+  }, [handleMessage])
 
   useEffect(() => {
     const iframe = iframeRef.current
@@ -21,38 +71,14 @@ export default function WaveformViewer({ content, filePath }: WaveformViewerProp
     setIsLoading(true)
     setLoadError(null)
 
-    // Convert file content to data URI for the waveform file
-    const base64Content = btoa(content)
-    const waveformDataUri = `data:application/octet-stream;base64,${base64Content}`
-
-    // Build the iframe source URL pointing to the surfer viewer
-    // The surfer viewer will be loaded from the resources directory
-    const surferViewerUrl = new URL(
-      '../../../../../resources/surfer-viewer/index.html',
-      import.meta.url
-    ).href
-
-    iframe.onload = () => {
-      setIsLoading(false)
-      // Once loaded, tell surfer to load the waveform file
-      if (iframe.contentWindow) {
-        iframe.contentWindow.postMessage(
-          {
-            command: 'LoadUrl',
-            url: waveformDataUri
-          },
-          '*'
-        )
-      }
-    }
-
     iframe.onerror = () => {
       setIsLoading(false)
       setLoadError(translate('waveform.load_error', 'Failed to load waveform viewer'))
     }
 
-    iframe.src = surferViewerUrl
-  }, [content, filePath])
+    // The surfer viewer assets are served by the Vite plugin at /surfer-viewer/
+    iframe.src = '/surfer-viewer/index.html'
+  }, [filePath])
 
   if (loadError) {
     return (
@@ -75,7 +101,7 @@ export default function WaveformViewer({ content, filePath }: WaveformViewerProp
         ref={iframeRef}
         className="h-full w-full border-0"
         title={`Waveform viewer - ${filePath}`}
-        sandbox="allow-scripts allow-same-origin"
+        sandbox="allow-scripts allow-same-origin allow-modals"
       />
     </div>
   )
