@@ -41,7 +41,7 @@ export function useWorkflowSlashCommand(): WorkflowRouteArmer {
     }
     const timeout = window.setTimeout(exit, WATCH_TIMEOUT_MS)
     const unsubscribe = window.api.workflows.onChanged((payload) => {
-      const created = payload.workflows.find((wf) => wf.createdAt > armedAt)
+      const created = payload.workflows.find((wf) => wf.createdAt >= armedAt)
       if (!created) {
         return
       }
