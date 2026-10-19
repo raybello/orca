@@ -36,10 +36,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  orcad-template:
+    name: Build orcad template
+    if: github.repository_owner != 'stablyai'
+    uses: ./.github/workflows/node-server-tests.yml
+    with:
+      ref: ${{ inputs.ref || github.ref }}
+      build_template: true
   windows:
     name: Windows installer
     # Why the owner check: this file only makes sense on a fork; upstream has real release workflows.
     if: github.repository_owner != 'stablyai' && inputs.platforms != 'macos'
+    needs: [orcad-template]
     runs-on: windows-2022
     timeout-minutes: 60
     steps:
@@ -74,6 +82,12 @@ jobs:
         run: pnpm run build:release:parallel
         env:
           NODE_OPTIONS: --max-old-space-size=4096
+      
+      - name: Download the orcad deployment template
+        uses: actions/download-artifact@v8
+        with: 
+          name: orcad-template
+          path: out/orcad-template
 
       - name: Prepare Electron native runtime
         run: node config/scripts/ensure-native-runtime.mjs --runtime=electron
@@ -105,6 +119,7 @@ jobs:
   macos:
     name: macOS installer
     if: github.repository_owner != 'stablyai' && inputs.platforms != 'windows'
+    needs: [orcad-template]
     runs-on: macos-15
     timeout-minutes: 90
     steps:
@@ -149,6 +164,12 @@ jobs:
         run: pnpm run build:release
         env:
           NODE_OPTIONS: --max-old-space-size=4096
+
+      - name: Download the orcad template
+        uses: actions/download-artifact@v8
+        with:
+          name: orcad-template
+          path: out/orcad-template
 
       - name: Prepare Electron native runtime
         run: pnpm run ensure:electron-runtime
