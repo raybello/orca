@@ -57,9 +57,6 @@ export function useNativeChatPtyComposerSend(args: {
     // A /workflow draft re-enters as an ordinary chat prompt: the text is the
     // description the agent authors from, never a workflow name.
     const route = nativeChatWorkflowRoute(args.draft)
-    if (route) {
-      args.onWorkflowRouteArmed?.(route.description)
-    }
     const text = route?.routedPrompt ?? args.draft
     const imagePaths = args.imageAttachments.map((attachment) => attachment.path)
     if ((text.trim() === '' && imagePaths.length === 0) || args.disabled) {
@@ -138,6 +135,9 @@ export function useNativeChatPtyComposerSend(args: {
       agent: args.agent,
       runtime: nativeChatComposerTargetIsRemote(target.ptyId) ? 'remote' : 'local'
     })
+    if (route) {
+      args.onWorkflowRouteArmed?.(route.description)
+    }
     args.onSubmitted?.()
     args.setDraft('')
     args.setCaret(0)
