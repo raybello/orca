@@ -6,7 +6,7 @@ name: Fork desktop installers
 # is published or notarized, so they are for testing and personal use, not distribution.
 #
 #   gh workflow run fork-desktop-installers.yml --ref main -f platforms=both
-#
+#   test
 # Windows installers are unsigned (SmartScreen warns on first run) and macOS builds are ad-hoc
 # signed (right-click > Open the first time). Neither auto-updates from a fork.
 
