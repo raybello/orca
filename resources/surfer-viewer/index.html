@@ -39,14 +39,8 @@
         window.on_surfer_error = on_surfer_error;
     </script>
 
-    <!-- Analytics disabled for embedded viewer -->
-    <!-- <script data-goatcounter="https://surfer-project.goatcounter.com/count"
-        async src="//gc.zgo.at/count.js"></script> -->
 
-    
-    
-    
-    
+
 
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="favicon.ico" sizes="any">
@@ -193,18 +187,6 @@
     <script>
         register_message_listener()
     </script>
-
-    <!--Register Service Worker. this will cache the wasm / js scripts for offline use (for PWA functionality). -->
-    <!-- Force refresh (Ctrl + F5) to load the latest files instead of cached files  -->
-    <!-- Service Worker disabled for embedded viewer to avoid caching issues -->
-    <!-- <script>
-        // We disable caching during development so that we always view the latest version.
-        if ('serviceWorker' in navigator && window.location.hash !== "#dev") {
-            window.addEventListener('load', function () {
-                navigator.serviceWorker.register('sw.js');
-            });
-        }
-    </script> -->
 </body>
 
 </html>
