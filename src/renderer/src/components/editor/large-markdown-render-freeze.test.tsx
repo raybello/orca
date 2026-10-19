@@ -115,6 +115,7 @@ function renderPreviewTab(content: string) {
     isMermaid: false,
     isCsv: false,
     isNotebook: false,
+    isWaveform: false,
     mdViewMode: 'rich' as const,
     inlineMarkdownRenderState: null,
     isChangesMode: false,

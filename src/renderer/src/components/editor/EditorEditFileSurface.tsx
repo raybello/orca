@@ -12,7 +12,8 @@ import {
   IpynbViewer,
   MermaidViewer,
   MonacoEditor,
-  MediaViewer
+  MediaViewer,
+  WaveformViewer
 } from './editor-lazy-views'
 import type { EditorConflictNavigation } from './useEditorConflictNavigation'
 import { EditorFileLoadErrorView } from './EditorFileLoadErrorView'
@@ -44,6 +45,7 @@ export function EditorEditFileSurface({
   isMermaid,
   isCsv,
   isNotebook,
+  isWaveform,
   mdViewMode,
   inlineMarkdownRenderState,
   isChangesMode,
@@ -76,6 +78,7 @@ export function EditorEditFileSurface({
   isMermaid: boolean
   isCsv: boolean
   isNotebook: boolean
+  isWaveform: boolean
   mdViewMode: MarkdownViewMode
   inlineMarkdownRenderState: MarkdownRenderState | null
   isChangesMode: boolean
@@ -297,6 +300,8 @@ export function EditorEditFileSurface({
       onDirtyStateHint={handleDirtyStateHint}
       onSave={handleSave}
     />
+  ) : isWaveform ? (
+    <WaveformViewer key={activeFile.id} content={currentContent} filePath={activeFile.filePath} />
   ) : (
     monacoEditor
   )

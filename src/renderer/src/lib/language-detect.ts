@@ -118,7 +118,10 @@ const EXT_TO_LANGUAGE: Record<string, string> = {
   '.abap': 'abap',
   '.prisma': 'graphql',
   '.csv': 'csv',
-  '.tsv': 'tsv'
+  '.tsv': 'tsv',
+  '.vcd': 'waveform',
+  '.fst': 'waveform',
+  '.ghw': 'waveform'
 }
 
 const FILENAME_TO_LANGUAGE: Record<string, string> = {
