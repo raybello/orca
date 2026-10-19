@@ -17,7 +17,16 @@
         window.inject_message = inject_message;
         window.id_of_name = id_of_name;
         window.draw_text_arrow = draw_text_arrow;
-        /*SURFER_SETUP_HOOKS*/
+
+        // Setup communication with parent window (Orca)
+        window.addEventListener('DOMContentLoaded', function() {
+            // Notify parent that surfer is ready
+            if (window.parent !== window) {
+                window.parent.postMessage({
+                    command: 'loaded'
+                }, '*');
+            }
+        });
     </script>
 
 
@@ -30,8 +39,9 @@
         window.on_surfer_error = on_surfer_error;
     </script>
 
-    <script data-goatcounter="https://surfer-project.goatcounter.com/count"
-        async src="//gc.zgo.at/count.js"></script>
+    <!-- Analytics disabled for embedded viewer -->
+    <!-- <script data-goatcounter="https://surfer-project.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script> -->
 
     
     
@@ -186,14 +196,15 @@
 
     <!--Register Service Worker. this will cache the wasm / js scripts for offline use (for PWA functionality). -->
     <!-- Force refresh (Ctrl + F5) to load the latest files instead of cached files  -->
-    <script>
+    <!-- Service Worker disabled for embedded viewer to avoid caching issues -->
+    <!-- <script>
         // We disable caching during development so that we always view the latest version.
         if ('serviceWorker' in navigator && window.location.hash !== "#dev") {
             window.addEventListener('load', function () {
                 navigator.serviceWorker.register('sw.js');
             });
         }
-    </script>
+    </script> -->
 </body>
 
 </html>
