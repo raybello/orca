@@ -187,12 +187,12 @@ export class WorkflowService {
     if (!workflow) {
       throw new Error(`Workflow ${workflowId} not found.`)
     }
-    const run = await this.runWorkflow(workflow, 'manual')
     // First run activates scheduling if a cron trigger is present
     const hasCron = workflow.nodes.some((n) => n.type === 'trigger_cron')
     if (hasCron && !workflow.enabled) {
       this.activateSchedule(workflowId)
     }
+    const run = await this.runWorkflow(workflow, 'manual')
     return run
   }
 
