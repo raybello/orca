@@ -24,11 +24,25 @@ function readImportSource(flags: Map<string, string | boolean>): Promise<string>
     return new Promise((resolve, reject) => {
       let data = ''
       process.stdin.setEncoding('utf8')
-      process.stdin.on('data', (chunk) => {
+      const onData = (chunk: Buffer | string) => {
         data += String(chunk)
-      })
-      process.stdin.on('end', () => resolve(data))
-      process.stdin.on('error', reject)
+      }
+      const onEnd = () => {
+        cleanup()
+        resolve(data)
+      }
+      const onError = (err: Error) => {
+        cleanup()
+        reject(err)
+      }
+      const cleanup = () => {
+        process.stdin.off('data', onData)
+        process.stdin.off('end', onEnd)
+        process.stdin.off('error', onError)
+      }
+      process.stdin.on('data', onData)
+      process.stdin.on('end', onEnd)
+      process.stdin.on('error', onError)
     })
   }
   return readFile(file, 'utf8')
