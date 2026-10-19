@@ -79,11 +79,18 @@ export function assignImportedWorkflowIds(
     const remappedDataJson = remapTemplates(JSON.stringify(node.data))
     // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: remappedDataJson is the serialized node.data with only string values rewritten; shape and type are preserved.
     const remappedData = JSON.parse(remappedDataJson) as WorkflowNode['data']
+    // Nudge position to distinguish imports, but wrap at 1000 to keep nodes on canvas
+    const nudgedX = node.pos.x + 40
+    const nudgedY = node.pos.y + 40
+    const MAX_POS = 1000
     // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: spread preserves the node's `type` discriminant; remappedData is the same shape with template strings rewritten.
     return {
       ...node,
       id: newId,
-      pos: { x: node.pos.x + 40, y: node.pos.y + 40 },
+      pos: {
+        x: nudgedX > MAX_POS ? nudgedX % MAX_POS : nudgedX,
+        y: nudgedY > MAX_POS ? nudgedY % MAX_POS : nudgedY
+      },
       data: remappedData
     } as WorkflowNode
   })
