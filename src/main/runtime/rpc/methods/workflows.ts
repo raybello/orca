@@ -29,7 +29,9 @@ export const WORKFLOW_METHODS = [
     handler: async (params, { runtime }) => {
       const parsed = parseWorkflowExport(params.json)
       const executionTargetId =
-        parsed.executionTargetType === 'ssh' ? params.executionTargetId?.trim() : 'local'
+        parsed.executionTargetType === 'ssh'
+          ? params.executionTargetId?.trim() || undefined
+          : 'local'
       if (parsed.executionTargetType === 'ssh' && !executionTargetId) {
         throw new Error(
           'This workflow targets SSH. Import again with --execution-target <server id>.'
