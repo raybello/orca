@@ -11,12 +11,15 @@ import { getAppEnvironment } from '../../shared/app-environment'
 // PostHog dependency removed - using no-op stub
 class PostHog {
   constructor(_apiKey: string, _options?: unknown) {}
-  capture(_event: string, _properties?: unknown) {}
+  capture(_payload: { distinctId: string; event: string; uuid?: string; properties?: unknown }) {}
   shutdown(_timeout?: number) {}
   optIn() {}
   optOut() {}
-  on(_event: string, _handler: unknown) {}
+  on(_event: string, _handler: unknown): (() => void) | null {
+    return null
+  }
 }
+export type { PostHog }
 import type { CommonProps, EventName, EventProps, OptInVia } from '../../shared/telemetry-events'
 import type { Store } from '../persistence'
 import { consumeBurstToken, resetBurstCapsForSession } from './burst-cap'

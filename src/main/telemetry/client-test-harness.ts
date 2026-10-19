@@ -1,9 +1,9 @@
-import type { PostHog } from 'posthog-node'
 import { vi } from 'vitest'
 import type { CommonProps } from '../../shared/telemetry-events'
 import type { GlobalSettings } from '../../shared/global-settings-types'
 import type { Store } from '../persistence'
 import { resetBurstCapsForSession } from './burst-cap'
+import type { PostHog } from './client'
 import {
   _enableTransportForTests,
   _resetFirstAppOpenedFiredForTests,
