@@ -61,13 +61,21 @@ export function createLocalFilesystemProvider(
   }
   return {
     readDir: async (dirPath, readOptions = {}) => {
-      const entries = await readdir(await authorize(dirPath), { withFileTypes: true })
       const store = options.requireStore()
+      const followSymlinks =
+        readOptions.followSymlinks ?? store.getSettings().followSymlinkedDirectories ?? false
+      // Why: when following symlinks the directory or its entries may resolve to a path outside
+      // the workspace root; authorize on the logical path only so symlinked subtrees on other
+      // disks remain reachable from within the workspace.
+      const symlinkAwareAuthorize = followSymlinks
+        ? (path: string) => resolveAuthorizedPath(path, store, { skipSymlinkRealpathCheck: true })
+        : authorize
+      const entries = await readdir(await symlinkAwareAuthorize(dirPath), { withFileTypes: true })
       return classifyFilesystemDirectoryEntries(
         dirPath,
         entries,
-        readOptions.followSymlinks ?? store.getSettings().followSymlinkedDirectories ?? false,
-        (path) => resolveAuthorizedPath(path, store)
+        followSymlinks,
+        symlinkAwareAuthorize
       )
     },
     readDocPreviewFile: readAuthorizedDocPreviewFile,

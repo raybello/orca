@@ -1,4 +1,3 @@
-import { useAppStore } from '@/store'
 import { getRelativePathInsideRoot, joinPath } from '@/lib/path'
 import type { DirEntry } from '../../../../shared/filesystem-entry-types'
 import { sortDirEntries } from '../../../../shared/file-name-sort'
@@ -47,6 +46,8 @@ export async function readFileExplorerDirectory(
   if (!route) {
     throw new Error(getFileExplorerOwnerUnresolvedMessage())
   }
+  // Why: the file explorer is interactive navigation, not a recursive scan — always follow
+  // symlinks so symlinked directories are expandable regardless of the Quick Open setting.
   const entries = await readRuntimeDirectory(
     {
       target: route.target,
@@ -55,9 +56,7 @@ export async function readFileExplorerDirectory(
       connectionId: route.connectionId
     },
     dirPath,
-    useAppStore.getState().settings?.followSymlinkedDirectories
-      ? { followSymlinks: true }
-      : undefined
+    { followSymlinks: true }
   )
   // Why: remote-runtime and paired-web routes return the host's order verbatim,
   // and an older host may still sort lexicographically; re-sorting an already

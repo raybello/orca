@@ -46,6 +46,12 @@ export type ResolveAuthorizedPathOptions = {
   preserveSymlink?: boolean
   /** Roots one caller owns outside the store (desktop: floating workspace; runtime: chat scratch). */
   extraRoots?: readonly string[]
+  /**
+   * Skip the realpath canonicalization check and only verify the logical path is within allowed
+   * roots. Used for directory listings with followSymlinks=true so symlinks whose targets live
+   * outside the workspace root can still be read via their logical (in-workspace) path.
+   */
+  skipSymlinkRealpathCheck?: boolean
 }
 
 export async function resolveAuthorizedPath(
@@ -59,6 +65,13 @@ export async function resolveAuthorizedPath(
   const allowedRoots = createAllowedRootsSnapshot(store, options.extraRoots)
   if (!(await isPathAllowedIncludingRegisteredWorktrees(resolvedTarget, store, { allowedRoots }))) {
     throw new Error(PATH_ACCESS_DENIED_MESSAGE)
+  }
+
+  // Why: directory listings with followSymlinks=true need to traverse into symlink targets that may
+  // live outside the workspace root. We already checked the logical path above; skipping the
+  // realpath re-check lets readDir follow symlinks freely while file reads keep the strict check.
+  if (options.skipSymlinkRealpathCheck) {
+    return resolvedTarget
   }
 
   if (options.preserveSymlink) {
