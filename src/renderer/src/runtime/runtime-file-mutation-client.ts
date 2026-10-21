@@ -14,6 +14,7 @@ import { toRuntimeWorktreeSelector } from './runtime-worktree-selector'
 import type { LocalFileAccess } from '../../../shared/local-file-access'
 import { localAccess } from './runtime-file-read-client'
 import { REMOTE_RUNTIME_MAX_FILE_WRITE_CONTENT_BYTES } from '../../../shared/remote-runtime-memory-limits'
+import { browseRuntimeServerDirectory } from './runtime-server-directory-browser'
 
 /** Refuses a save the host's frame cap would reject by dropping the whole connection. */
 function assertRemoteWriteFitsOneRequest(content: string): void {
@@ -36,6 +37,14 @@ export async function readRuntimeDirectory(
 ): Promise<DirEntry[]> {
   const remoteArgs = getRemoteFileArgs(context, dirPath)
   if (!remoteArgs) {
+    // Why: a path outside the workspace root is unreachable via files.readDir (which requires a
+    // workspace-relative path). For runtime environments, fall back to browseServerDir which
+    // accepts absolute paths — this handles symlink targets on other disks and navigating to
+    // directories outside the workspace root on an SSH host.
+    if (context.target.kind === 'environment' && context.worktreeId) {
+      const listing = await browseRuntimeServerDirectory(context.target.environmentId, dirPath)
+      return listing.entries
+    }
     assertLocalFilesystemFallbackAllowed(context)
     return window.api.fs.readDir({ dirPath, connectionId: context.connectionId, ...options })
   }

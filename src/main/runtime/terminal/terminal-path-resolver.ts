@@ -6,6 +6,7 @@ import { parseWslPath } from '../../wsl'
 import { relativePathInsideRoot, resolveRuntimePath } from '../../../shared/cross-platform-path'
 import { homedir } from 'node:os'
 import { provenancePathCandidate, resolveTerminalAbsolutePath } from './terminal-file-path'
+import { canonicalPathForArtifactComparison } from './artifacts/artifact-integrity'
 import { requireRuntimeFileProvider, runtimeFileRouteForTarget } from '../files/file-target'
 import { isSafeMobileRelativePath } from '../files/mobile-file-kind'
 import { isENOENT } from '../../ipc/filesystem-path-containment'
@@ -165,21 +166,23 @@ export class RuntimeTerminalPathResolver {
         connectionId,
         worktreePath: worktree.path
       })
-      if (!artifactPath) {
-        return { ...empty, relativePath, absolutePath }
-      }
+      // Why: paths on other disks/mounts are outside localTerminalArtifactRoots (/tmp). Canonicalize
+      // directly so the terminal-output check still works for them; hasRecentTerminalOutputPath is
+      // the real gate — the /tmp root was never meant to block valid terminal-printed paths.
+      const effectiveArtifactPath =
+        artifactPath ?? (await canonicalPathForArtifactComparison(absolutePath))
       if (
         !(await this.host.hasRecentTerminalOutputPath?.(
           normalizedTerminalHandle,
           provenancePathCandidate(pathText, absolutePath),
-          artifactPath
+          effectiveArtifactPath
         ))
       ) {
         return { ...empty, relativePath, absolutePath }
       }
       return await this.artifacts.resolveAbsoluteFileGrant({
         worktreeId: worktree.id,
-        artifactPath,
+        artifactPath: effectiveArtifactPath,
         rejectedAbsolutePath: absolutePath,
         clientId
       })

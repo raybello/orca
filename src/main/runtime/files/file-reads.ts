@@ -81,7 +81,10 @@ export class RuntimeFileReads {
     const target = await resolveFileExplorerPath(this.host, worktreeSelector, relativePath)
     requireLocalRuntimeFileRoute(target)
     // Why: sized by extension instead of a stat round trip.
-    const filePath = await resolveRuntimeAuthorizedPath(target.path, this.host.requireStore())
+    // Why skipSymlinkRealpathCheck: workspace symlinks to other disks are still user-accessible.
+    const filePath = await resolveRuntimeAuthorizedPath(target.path, this.host.requireStore(), {
+      skipSymlinkRealpathCheck: true
+    })
     const mimeType = RUNTIME_PREVIEWABLE_BINARY_MIME_TYPES[extname(filePath).toLowerCase()]
     const maxBytes = mimeType ? binaryMaxBytes : MOBILE_FILE_READ_MAX_BYTES
     let buffer: Buffer
@@ -167,13 +170,20 @@ export class RuntimeFileReads {
   ): Promise<RuntimeFileReadChunkResult> {
     const target = await resolveFileExplorerPath(this.host, worktreeSelector, relativePath)
     requireLocalRuntimeFileRoute(target)
-    const filePath = await resolveRuntimeAuthorizedPath(target.path, this.host.requireStore())
+    // Why: same symlink policy as readFileExplorerPreview — logical workspace paths are accessible.
+    const filePath = await resolveRuntimeAuthorizedPath(target.path, this.host.requireStore(), {
+      skipSymlinkRealpathCheck: true
+    })
     return readLocalFileRange(filePath, offset, length)
   }
 }
 
 async function readLocalMobileFile(filePath: string, store: RuntimeStore): Promise<string> {
-  const authorizedPath = await resolveRuntimeAuthorizedPath(filePath, store)
+  // Why: a workspace symlink whose target lives outside the workspace root still represents a
+  // user-accessible file; skip the realpath re-check so reading through symlinks works.
+  const authorizedPath = await resolveRuntimeAuthorizedPath(filePath, store, {
+    skipSymlinkRealpathCheck: true
+  })
   const fileStat = await stat(authorizedPath)
   // Why: cap the read so opening a large file can't block the WebSocket (previews are read-only convenience views).
   const readLimit = Math.min(fileStat.size, MOBILE_FILE_READ_MAX_BYTES + 1)
