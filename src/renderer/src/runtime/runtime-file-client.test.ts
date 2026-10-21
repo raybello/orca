@@ -577,19 +577,30 @@ describe('runtime file client', () => {
     })
   })
 
-  it('does not fall back to client-local directory reads for remote-owned paths outside the worktree', async () => {
-    await expect(
-      readRuntimeDirectory(
-        {
-          target: { kind: 'environment' as const, environmentId: 'env-1' },
-          worktreeId: 'wt-1',
-          worktreePath: '/remote/repo',
-          connectionId: 'ssh-1'
-        },
-        '/tmp'
-      )
-    ).rejects.toThrow('outside the owning runtime worktree')
+  it('falls back to browseServerDir (not client-local reads) for remote-owned paths outside the worktree', async () => {
+    runtimeEnvironmentCall.mockResolvedValue({
+      id: 'rpc-1',
+      ok: true,
+      result: { entries: [] },
+      _meta: { runtimeId: 'remote-runtime' }
+    })
 
-    expect(runtimeEnvironmentCall).not.toHaveBeenCalled()
+    const entries = await readRuntimeDirectory(
+      {
+        target: { kind: 'environment' as const, environmentId: 'env-1' },
+        worktreeId: 'wt-1',
+        worktreePath: '/remote/repo',
+        connectionId: 'ssh-1'
+      },
+      '/tmp'
+    )
+
+    expect(entries).toEqual([])
+    expect(runtimeEnvironmentCall).toHaveBeenCalledWith(
+      expect.objectContaining({
+        method: 'files.browseServerDir',
+        params: { path: '/tmp' }
+      })
+    )
   })
 })

@@ -67,10 +67,11 @@ export async function resolveAuthorizedPath(
     throw new Error(PATH_ACCESS_DENIED_MESSAGE)
   }
 
-  // Why: directory listings with followSymlinks=true need to traverse into symlink targets that may
-  // live outside the workspace root. We already checked the logical path above; skipping the
-  // realpath re-check lets readDir follow symlinks freely while file reads keep the strict check.
-  if (options.skipSymlinkRealpathCheck) {
+  // Why: directory listings with followSymlinks=true (and file reads of workspace-symlinked paths)
+  // need to traverse symlink targets that may live outside the workspace root. Skip the realpath
+  // re-check only when the logical path is in a primary registered root — extra roots like chat
+  // scratch must keep the check so agent-created symlinks can't escape their sandbox.
+  if (options.skipSymlinkRealpathCheck && isPathAllowed(resolvedTarget, store)) {
     return resolvedTarget
   }
 
