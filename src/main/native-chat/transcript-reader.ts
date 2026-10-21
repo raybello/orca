@@ -13,6 +13,7 @@ import { wslTranscriptFsRefusal } from './wsl-transcript-fs-gate'
 import {
   decodeClaudeTranscriptLine,
   decodeCodexTranscriptLine,
+  decodeCursorTranscriptLine,
   decodeGrokTranscriptLine,
   decodeOmpTranscriptLine
 } from './transcript-line-decoders'
@@ -70,6 +71,9 @@ export async function readNativeChatTranscript(
     }
     if (transcriptAgent === 'codex') {
       return { messages: await readTranscript(filePath, decodeCodexTranscriptLine) }
+    }
+    if (transcriptAgent === 'cursor') {
+      return { messages: await readTranscript(filePath, decodeCursorTranscriptLine) }
     }
     if (transcriptAgent === 'grok') {
       return { messages: await readTranscript(filePath, decodeGrokTranscriptLine) }

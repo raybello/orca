@@ -2,7 +2,7 @@ import { win32 } from 'node:path'
 import { GROK_CHAT_HISTORY_FILE } from '../../shared/grok-session-paths'
 import { OMP_SESSION_ARTIFACT_DIR_PATTERN } from '../ai-vault/session-scanner-omp-subagent-transcripts'
 
-export type SessionIdLookupAgent = 'claude' | 'codex' | 'grok' | 'omp'
+export type SessionIdLookupAgent = 'claude' | 'codex' | 'cursor' | 'grok' | 'omp'
 
 /** How one agent names a session's transcript file, for lookup by session id. */
 export type SessionFileIdLayout = {
@@ -19,6 +19,13 @@ function stem(path: string): string {
 export const SESSION_FILE_ID_LAYOUTS: Record<SessionIdLookupAgent, SessionFileIdLayout> = {
   // `<projects>/<slug>/<id>.jsonl`
   claude: { fileMatchesId: (path, id) => win32.basename(path) === `${id}.jsonl` },
+  // `<projects>/<slug>/agent-transcripts/<id>/<id>.jsonl`
+  cursor: {
+    fileMatchesId: (path, id) =>
+      win32.basename(path) === `${id}.jsonl` && win32.basename(win32.dirname(path)) === id,
+    directoryPredicate: (name, depth, wanted) =>
+      depth === 0 || (depth === 1 && name === 'agent-transcripts') || (depth === 2 && wanted(name))
+  },
   // `rollout-<ts>-<id>.jsonl`, date-nested
   codex: {
     fileMatchesId: (path, id) => {

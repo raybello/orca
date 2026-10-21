@@ -58,6 +58,10 @@ function codexAccountSessionsDirs(): string[] {
   }
 }
 
+function cursorProjectsDir(): string {
+  return join(homedir(), '.cursor', 'projects')
+}
+
 function grokSessionsDir(): string {
   return resolveGrokSessionsDir(process.env, homedir())
 }
@@ -68,6 +72,8 @@ export type ResolveSessionFileOptions = {
   /** Override the Codex sessions roots, searched in order (tests / isolated
    *  scans). Defaults to the orca-managed home then CODEX_HOME/~/.codex. */
   codexSessionsDirs?: string[]
+  /** Override the Cursor projects root (`~/.cursor/projects`). */
+  cursorProjectsDir?: string
   /** Override the Grok sessions root (`~/.grok/sessions`). */
   grokSessionsDir?: string
   /** Override the omp sessions root (`~/.omp/agent/sessions`). */
@@ -191,6 +197,13 @@ async function resolveSessionFileById(
   if (transcriptAgent === 'grok') {
     const override = options.grokSessionsDir
     return resolveTiered('grok', trimmedId, [override ?? grokSessionsDir()], {
+      wslTier: !override,
+      signal
+    })
+  }
+  if (transcriptAgent === 'cursor') {
+    const override = options.cursorProjectsDir
+    return resolveTiered('cursor', trimmedId, [override ?? cursorProjectsDir()], {
       wslTier: !override,
       signal
     })
