@@ -12,9 +12,15 @@ import { getAppEnvironment } from '../../shared/app-environment'
 class PostHog {
   constructor(_apiKey: string, _options?: unknown) {}
   capture(_payload: { distinctId: string; event: string; uuid?: string; properties?: unknown }) {}
-  shutdown(_timeout?: number) {}
-  optIn() {}
-  optOut() {}
+  shutdown(_timeout?: number): Promise<void> {
+    return Promise.resolve()
+  }
+  optIn(): Promise<void> {
+    return Promise.resolve()
+  }
+  optOut(): Promise<void> {
+    return Promise.resolve()
+  }
   on(_event: string, _handler: unknown): (() => void) | null {
     return null
   }
