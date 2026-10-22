@@ -172,6 +172,10 @@ async function recordDaemonTree(daemonDir: string): Promise<ProfileDaemonRecord>
   for (const { pid } of readProfileDaemons(daemonDir)) {
     record.pids.add(pid)
   }
+  // Skip the expensive Windows process table read when there are no daemon pids to track.
+  if (record.pids.size === 0) {
+    return record
+  }
   const rows = await readProcessTable()
   if (rows) {
     const index = buildProcessTableIndex(rows)
