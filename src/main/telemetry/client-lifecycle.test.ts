@@ -1,4 +1,3 @@
-import type { PostHog } from 'posthog-node'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   _enableTransportForTests,
@@ -7,7 +6,8 @@ import {
   persistBannerAcknowledgeWithoutEmitting,
   setOptIn,
   shouldOptOutSdkAtInit,
-  shutdownTelemetry
+  shutdownTelemetry,
+  type PostHog
 } from './client'
 import {
   BASE_COMMON,
