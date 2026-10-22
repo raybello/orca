@@ -36,6 +36,7 @@ const roots: string[] = []
 const cleanupDiagnostics = new Set<ServeCleanupDiagnostics>()
 
 afterEach(async () => {
+  // 120s: two-root cleanup on Windows ARM can exceed the global 60s hookTimeout.
   const failures: unknown[] = []
   // Stop every profile before removing any project root it may still use.
   for (const root of roots) {
@@ -74,7 +75,7 @@ afterEach(async () => {
   if (failures.length > 0) {
     throw new AggregateError(failures, 'Test root removal incomplete')
   }
-})
+}, 120_000)
 
 /** Without Vitest's markers: daemon-entry.js does not start its server under VITEST. */
 function serveEnv(userData: string): NodeJS.ProcessEnv {
