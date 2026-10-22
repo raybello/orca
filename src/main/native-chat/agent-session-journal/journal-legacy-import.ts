@@ -23,6 +23,7 @@ import { resolveSessionFilePath, type ResolveSessionFileOptions } from '../sessi
 import {
   decodeClaudeTranscriptLine,
   decodeCodexTranscriptLine,
+  decodeCursorTranscriptLine,
   decodeGrokTranscriptLine,
   decodeOmpTranscriptLine
 } from '../transcript-line-decoders'
@@ -182,6 +183,7 @@ function replacementItem(
 const TRANSCRIPT_DECODERS = {
   claude: decodeClaudeTranscriptLine,
   codex: decodeCodexTranscriptLine,
+  cursor: decodeCursorTranscriptLine,
   grok: decodeGrokTranscriptLine,
   omp: decodeOmpTranscriptLine
 } as const

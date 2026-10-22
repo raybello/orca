@@ -17,6 +17,7 @@ export const AGENT_SESSION_HOME_SEGMENTS = {
     [...WSL_CODEX_RUNTIME_HOME_SEGMENTS, 'sessions'],
     ['.codex', 'sessions']
   ],
+  cursor: [['.cursor', 'projects']],
   grok: [['.grok', 'sessions']],
   omp: [['.omp', 'agent', 'sessions']]
 } as const satisfies Record<string, readonly (readonly string[])[]>

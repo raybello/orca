@@ -16,6 +16,7 @@ const EXPECTED_SUPPORTED_AGENTS = [
   'claude',
   'openclaude',
   'codex',
+  'cursor',
   'grok',
   'omp',
   'opencode',
@@ -71,7 +72,6 @@ describe('NativeChatSupportedAgents', () => {
         expect(rendered).not.toContain(entry.id)
       }
     }
-    expect(rendered).not.toContain('cursor')
   })
 
   it('keeps the label in the English catalog', () => {
