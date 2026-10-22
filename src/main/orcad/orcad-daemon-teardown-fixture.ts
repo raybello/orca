@@ -27,7 +27,9 @@ import type { spawnProcess } from '@orca/process-host'
 
 const EXIT_WAIT_MS = 10_000
 const POLL_MS = 50
-const REMOVE_ATTEMPTS = 8
+// Why more attempts on Windows: daemon children inherit the profile as their cwd, and on
+// Windows 11 ARM runners, handles can take longer to release after process exit.
+const REMOVE_ATTEMPTS = process.platform === 'win32' ? 20 : 8
 const REMOVE_RETRY_MS = 150
 
 type ProcessExitDependencies = {
