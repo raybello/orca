@@ -273,6 +273,8 @@ Artifacts are kept for 14 days. Nothing is published anywhere. Each build is ver
 
 To build on your own machine instead, run `pnpm install:release` once, then `pnpm build:mac` on a Mac or `pnpm build:win` on Windows (build Windows installers on Windows; the app has native modules). Output lands in `dist/`.
 
+To run Orca locally from source — the dev server, or a production build without packaging — see [running Orca locally](docs/readme/running-orca-locally.md).
+
 ### Installing the unsigned builds
 
 - **Windows:** the installer is unsigned. Upstream's dev builds are unsigned too, and only its stable releases are signed (through SignPath). SmartScreen shows "Windows protected your PC": choose **More info → Run anyway**.
