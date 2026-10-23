@@ -45,7 +45,8 @@ export class RuntimeTerminalPathResolver {
     clientId?: string,
     terminalHandle?: string | null,
     crossWorkspace?: boolean,
-    nativeChatContext?: RuntimeNativeChatFileContext | null
+    nativeChatContext?: RuntimeNativeChatFileContext | null,
+    userOpened?: boolean
   ): Promise<RuntimeTerminalPathResolution> {
     // Why: an absent store fails as runtime_unavailable before target resolution.
     this.host.requireStore()
@@ -125,6 +126,19 @@ export class RuntimeTerminalPathResolver {
                 absolutePath
               }
         }
+      }
+
+      // Why before the terminal/native-chat grants: a path the user typed into go-to-file is
+      // theirs to open wherever it lives, as it already is on a local or plain SSH workspace.
+      // The host's own permissions and the file size decide whether the tab may edit it.
+      if (userOpened && route.kind !== 'ssh') {
+        return await this.artifacts.resolveAbsoluteFileGrant({
+          worktreeId: worktree.id,
+          artifactPath: absolutePath,
+          clientId,
+          editableWhenWritable: true,
+          provenance: 'user-opened'
+        })
       }
 
       if (

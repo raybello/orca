@@ -79,7 +79,7 @@ export async function searchQuickOpenFilePaths(
   // Fresh ranker per attempt so a retry cannot double-count paths from the aborted scan.
   const scanOnce = async (): Promise<QuickOpenFilePathSearchResult> => {
     const ranker = new QuickOpenPathRanker(args.query, args.limit)
-    await scanRipgrepPaths({
+    const completed = await scanRipgrepPaths({
       args: args.includeIgnored === false ? primary : ignoredPass,
       authorizedRootPath,
       excludePathPrefixes,
@@ -89,7 +89,9 @@ export async function searchQuickOpenFilePaths(
       wslDistroForOutput
     })
     const result = ranker.result()
-    return { ...result, truncated: result.totalCount > args.limit }
+    // Why: a scan cut short by the deadline still owes what it ranked; marking it truncated is
+    // what stops the caller reading a partial list as the whole tree.
+    return { ...result, truncated: !completed || result.totalCount > args.limit }
   }
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
@@ -119,11 +121,12 @@ function scanRipgrepPaths(args: {
   ranker: QuickOpenPathRanker
   signal?: AbortSignal
   wslDistroForOutput?: string
-}): Promise<void> {
+}): Promise<boolean> {
   if (args.signal?.aborted) {
     return Promise.reject(fileListingCancellationError(args.signal))
   }
   return new Promise((resolve, reject) => {
+    let timedOut = false
     const filenameDecoder = new RipgrepFilenameDecoder((error) => {
       killSpawnedRipgrepProcess(child)
       finish(error)
@@ -193,7 +196,7 @@ function scanRipgrepPaths(args: {
       if (error) {
         reject(error)
       } else {
-        resolve()
+        resolve(!timedOut)
       }
     }
     const handleStdoutData = (chunk: Buffer | string): void => {
@@ -284,9 +287,12 @@ function scanRipgrepPaths(args: {
     child.once('close', handleClose)
     args.signal?.addEventListener('abort', handleAbort, { once: true })
     timer = setTimeout(() => {
+      // Why settle with partial results: on a tree too large for the budget, the paths already
+      // ranked are the useful answer — failing here showed an empty picker on every keystroke.
+      timedOut = true
       pathAccumulator.clear()
       killSpawnedRipgrepProcess(child)
-      finish(new Error('rg file-path search timed out'))
+      finish()
     }, 10_000)
     if (args.signal?.aborted) {
       handleAbort()

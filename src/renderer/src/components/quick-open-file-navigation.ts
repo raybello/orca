@@ -77,6 +77,10 @@ export async function openQuickOpenFile(
       }
     }
   }
+  let terminalArtifactGrant: Extract<
+    NonNullable<RuntimeTerminalPathResolution['openTarget']>,
+    { kind: 'absolute-file' }
+  > | null = null
   if (target.kind === 'environment' && isAbsolute) {
     let literal: RuntimeTerminalPathResolution | undefined
     if (rawQuery && rawQuery.trim() !== selectedPath) {
@@ -85,7 +89,8 @@ export async function openQuickOpenFile(
         'files.resolveTerminalPath',
         {
           worktree: toRuntimeWorktreeSelector(worktreeId),
-          pathText: rawQuery.trim()
+          pathText: rawQuery.trim(),
+          userOpened: true
         }
       )
       assertCurrent()
@@ -96,19 +101,27 @@ export async function openQuickOpenFile(
         ? literal
         : await callRuntimeRpc<RuntimeTerminalPathResolution>(target, 'files.resolveTerminalPath', {
             worktree: toRuntimeWorktreeSelector(worktreeId),
-            pathText: filePath
+            pathText: filePath,
+            userOpened: true
           })
     assertCurrent()
-    if (!resolved.exists || resolved.isDirectory || !resolved.absolutePath) {
+    if (!resolved.exists || !resolved.absolutePath) {
       throw new Error('The host could not open this file path.')
     }
-    if (resolved.relativePath === null) {
+    if (resolved.isDirectory) {
+      throw new Error('Choose a file rather than a directory.')
+    }
+    // Why a grant: a typed path outside every workspace is read through the host's grant, not
+    // through this computer's filesystem, and the tab must carry that grant to reload.
+    const grant = resolved.openTarget?.kind === 'absolute-file' ? resolved.openTarget : null
+    if (!grant && resolved.relativePath === null) {
       throw new Error(
         'This host cannot open a pasted path outside the workspace. Add its folder as a workspace first.'
       )
     }
+    terminalArtifactGrant = grant
     filePath = resolved.absolutePath
-    relativePath = resolved.relativePath
+    relativePath = resolved.relativePath ?? filePath
   } else {
     const stats = await statUserOpenedPath(context, filePath)
     assertCurrent()
@@ -126,7 +139,17 @@ export async function openQuickOpenFile(
     relativePath,
     worktreeId,
     runtimeEnvironmentId: target.kind === 'environment' ? target.environmentId : null,
-    ...(route.connectionId && getRelativePathInsideRoot(filePath, root) === null
+    // Why: a granted host file outside every workspace is read-only unless the host says a
+    // single read holds it and its own permissions allow writing it back.
+    ...(terminalArtifactGrant
+      ? {
+          readOnly: terminalArtifactGrant.readOnly === true,
+          terminalArtifactGrantId: terminalArtifactGrant.grantId
+        }
+      : {}),
+    ...(!terminalArtifactGrant &&
+    route.connectionId &&
+    getRelativePathInsideRoot(filePath, root) === null
       ? { externalSshTargetId: route.connectionId }
       : {}),
     language: detectLanguage(filePath),

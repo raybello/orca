@@ -1,13 +1,19 @@
 import { SshHostNotServedError } from '../providers/ssh-host-not-served-error'
 import { describe, expect, it, vi } from 'vitest'
-import { resolveAuthorizedPathMock, statMock } from './orca-runtime-files-mock-registry'
+import { chmod, mkdtemp, readFile, realpath } from 'node:fs/promises'
+import type * as NodeFsPromises from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { renameMock, resolveAuthorizedPathMock, statMock } from './orca-runtime-files-mock-registry'
 import {
   createRuntimeFileCommands,
   useRuntimeFileCommandsLifecycle
 } from './orca-runtime-files-test-harness'
 import {
+  absoluteFileTarget,
   resolveTerminalArtifactPath,
-  statAsFile
+  statAsFile,
+  useTerminalArtifactTempFiles
 } from './orca-runtime-files-terminal-artifact-fixtures'
 
 vi.mock('fs', async () => (await import('./orca-runtime-files-mock-registry')).fsModuleMock())
@@ -33,6 +39,7 @@ describe('RuntimeFileCommands', () => {
   useRuntimeFileCommandsLifecycle()
 
   describe('resolveTerminalPath', () => {
+    const { tempFile } = useTerminalArtifactTempFiles()
     it('resolves an absolute path inside the worktree to a relative path', async () => {
       const { commands } = createRuntimeFileCommands({ path: '/repo' })
       statAsFile()
@@ -232,6 +239,146 @@ describe('RuntimeFileCommands', () => {
         absolutePath: '/sibling/docs/readme.md',
         exists: false,
         isDirectory: false
+      })
+    })
+
+    // Why: go-to-file accepts a path the user typed anywhere on the host, as a local one does.
+    it('grants a user-opened file outside every workspace with the host edit capability', async () => {
+      const artifactPath = await realpath(await tempFile('Dockerfile', 'FROM scratch\n'))
+      const { commands } = createRuntimeFileCommands({ path: '/repo' })
+
+      const result = await commands.resolveTerminalPath(
+        'id:wt-1',
+        artifactPath,
+        null,
+        'client-a',
+        null,
+        false,
+        null,
+        true
+      )
+      const target = absoluteFileTarget(result)
+
+      expect(result).toMatchObject({
+        worktree: 'wt-1',
+        relativePath: null,
+        absolutePath: artifactPath,
+        exists: true,
+        isDirectory: false,
+        openTarget: {
+          kind: 'absolute-file',
+          provider: 'local',
+          absolutePath: artifactPath
+        }
+      })
+      expect(result.openTarget).not.toHaveProperty('readOnly')
+      await expect(
+        commands.readTerminalArtifactFile(
+          'id:wt-1',
+          target.grantId,
+          target.absolutePath,
+          'client-a'
+        )
+      ).resolves.toMatchObject({ content: 'FROM scratch\n' })
+
+      // The shared fs mock stubs rename; this case exercises the real atomic replace.
+      const actualFsPromises = await vi.importActual<typeof NodeFsPromises>('node:fs/promises')
+      renameMock.mockImplementation((from, to) => actualFsPromises.rename(from, to))
+      const written = await commands.writeTerminalArtifactFile(
+        'id:wt-1',
+        target.grantId,
+        target.absolutePath,
+        'FROM alpine\n',
+        'client-a'
+      )
+      expect(written).toEqual({ ok: true })
+      expect(await readFile(artifactPath, 'utf8')).toBe('FROM alpine\n')
+      await expect(
+        commands.readTerminalArtifactFile(
+          'id:wt-1',
+          target.grantId,
+          target.absolutePath,
+          'client-a'
+        )
+      ).resolves.toMatchObject({ content: 'FROM alpine\n' })
+    })
+
+    it('keeps a user-opened file the host cannot write read-only', async () => {
+      const artifactPath = await realpath(await tempFile('locked.txt', 'locked\n'))
+      await chmod(artifactPath, 0o444)
+      try {
+        const { commands } = createRuntimeFileCommands({ path: '/repo' })
+        const result = await commands.resolveTerminalPath(
+          'id:wt-1',
+          artifactPath,
+          null,
+          'client-a',
+          null,
+          false,
+          null,
+          true
+        )
+        const target = absoluteFileTarget(result)
+
+        expect(result.openTarget).toMatchObject({ readOnly: true })
+        await expect(
+          commands.writeTerminalArtifactFile(
+            'id:wt-1',
+            target.grantId,
+            target.absolutePath,
+            'changed\n',
+            'client-a'
+          )
+        ).rejects.toThrow('terminal_file_grant_read_only')
+      } finally {
+        await chmod(artifactPath, 0o644)
+      }
+    })
+
+    it('reports a missing user-opened path as missing instead of refusing it', async () => {
+      const missingPath = join(
+        await realpath(await mkdtemp(join(tmpdir(), 'orca-user-opened-'))),
+        'nope.ts'
+      )
+      const { commands } = createRuntimeFileCommands({ path: '/repo' })
+
+      const result = await commands.resolveTerminalPath(
+        'id:wt-1',
+        missingPath,
+        null,
+        'client-a',
+        null,
+        false,
+        null,
+        true
+      )
+
+      expect(result).toMatchObject({ exists: false, relativePath: null })
+      expect(result.openTarget).toBeUndefined()
+    })
+
+    it('answers a user-opened directory without a grant and keeps the refusal without the flag', async () => {
+      const directory = await realpath(await mkdtemp(join(tmpdir(), 'orca-user-opened-dir-')))
+      const { commands } = createRuntimeFileCommands({ path: '/repo' })
+
+      const unopened = await commands.resolveTerminalPath('id:wt-1', directory)
+      const opened = await commands.resolveTerminalPath(
+        'id:wt-1',
+        directory,
+        null,
+        'client-a',
+        null,
+        false,
+        null,
+        true
+      )
+
+      expect(unopened).toMatchObject({ exists: false, relativePath: null })
+      expect(opened).toMatchObject({
+        exists: true,
+        isDirectory: true,
+        relativePath: null,
+        openTarget: undefined
       })
     })
 

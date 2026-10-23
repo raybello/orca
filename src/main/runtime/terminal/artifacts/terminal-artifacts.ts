@@ -1,4 +1,4 @@
-import { constants } from 'node:fs/promises'
+import { access, constants } from 'node:fs/promises'
 import {
   RuntimeTerminalFileGrants,
   type RuntimeTerminalFileGrantHost,
@@ -23,7 +23,10 @@ import {
 import { statLocalTerminalArtifact } from './artifact-stat'
 import { requireReachableFilesystemRoute } from '../../../providers/execution-host-provider-dispatch'
 import { getConnectionExecutionHostId } from '../../../../shared/execution-host'
-import { assertPreviewWithinTransportBudget } from '../../files/file-preview-budget'
+import {
+  assertPreviewWithinTransportBudget,
+  MOBILE_FILE_READ_MAX_BYTES
+} from '../../files/file-preview-budget'
 import { SshHostNotServedError } from '../../../providers/ssh-host-not-served-error'
 import { isMobileBinaryPath } from '../../files/mobile-file-kind'
 import { writeTerminalArtifactFile } from './artifact-write'
@@ -60,6 +63,8 @@ export class RuntimeTerminalArtifacts {
     rejectedAbsolutePath?: string
     clientId?: string
     readOnly?: boolean
+    /** Lets the host's own permissions decide, for a path the user asked to edit. */
+    editableWhenWritable?: boolean
     provenance?: TerminalFileGrant['provenance']
   }): Promise<RuntimeTerminalPathResolution> {
     const { stats, contentDigest } = await statLocalTerminalArtifact(args.artifactPath)
@@ -79,7 +84,11 @@ export class RuntimeTerminalArtifacts {
           worktreeId: args.worktreeId,
           absolutePath: args.artifactPath,
           clientId: args.clientId,
-          readOnly: args.readOnly === true,
+          // Why size too: a truncated read would let a save shrink the file it only partly saw.
+          readOnly:
+            args.readOnly === true ||
+            (args.editableWhenWritable === true &&
+              !(await isEditableFile(args.artifactPath, stats.size))),
           provenance: args.provenance ?? 'terminal-output',
           stats,
           contentDigest
@@ -182,5 +191,21 @@ export class RuntimeTerminalArtifacts {
       content,
       clientId
     )
+  }
+}
+
+/**
+ * A tab may edit only when one read holds the whole file and the host's own permissions allow a
+ * write; either refusal is what the read-only tab communicates.
+ */
+async function isEditableFile(absolutePath: string, size: number | undefined): Promise<boolean> {
+  if (Number(size ?? 0) > MOBILE_FILE_READ_MAX_BYTES) {
+    return false
+  }
+  try {
+    await access(absolutePath, constants.W_OK)
+    return true
+  } catch {
+    return false
   }
 }

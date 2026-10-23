@@ -60,10 +60,28 @@ export async function writeRuntimeFile(
   context: RuntimeFileOperationArgs,
   filePath: string,
   content: string,
-  access?: LocalFileAccess
+  access?: LocalFileAccess,
+  terminalArtifactGrantId?: string
 ): Promise<void> {
   const remoteArgs = getRemoteFileArgs(context, filePath)
   if (!remoteArgs) {
+    // Why: a granted host file sits outside every workspace, so its save names the grant instead
+    // of a workspace-relative path; the host re-checks the grant's freshness and permissions.
+    if (terminalArtifactGrantId && context.target.kind === 'environment' && context.worktreeId) {
+      assertRemoteWriteFitsOneRequest(content)
+      await callRuntimeFileMutation(
+        context.target,
+        'files.writeTerminalArtifact',
+        {
+          worktree: toRuntimeWorktreeSelector(context.worktreeId),
+          grantId: terminalArtifactGrantId,
+          absolutePath: filePath,
+          content
+        },
+        15_000
+      )
+      return
+    }
     assertLocalFilesystemFallbackAllowed(context)
     await window.api.fs.writeFile(
       withSshMutationExpectation(context, {
