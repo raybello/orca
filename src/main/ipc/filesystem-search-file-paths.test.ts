@@ -111,6 +111,30 @@ describe('searchQuickOpenFilePaths', () => {
     }
   })
 
+  it('returns the matches ranked before the scan deadline instead of failing', async () => {
+    vi.useFakeTimers()
+    try {
+      const child = createMockProcess()
+      wslAwareSpawnMock.mockReturnValue(child)
+      const promise = searchQuickOpenFilePaths('/repo', UNUSED_STORE, {
+        query: 'target',
+        limit: 5
+      })
+      await flushMicrotasks()
+      child.stdout?.emit('data', 'target.ts\0')
+      await vi.advanceTimersByTimeAsync(10_000)
+
+      await expect(promise).resolves.toMatchObject({
+        paths: ['target.ts'],
+        totalCount: 1,
+        truncated: true
+      })
+      expect(child.kill).toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('preserves control characters within ranked paths', async () => {
     const child = createMockProcess()
     wslAwareSpawnMock.mockReturnValue(child)

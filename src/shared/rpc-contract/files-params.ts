@@ -37,6 +37,11 @@ export const ResolveTerminalPath = WorktreeSelector.extend({
     .unknown()
     .transform((v) => v === true)
     .optional(),
+  // Why: go-to-file opens a path the user typed, which may sit outside every workspace.
+  userOpened: z
+    .unknown()
+    .transform((v) => v === true)
+    .optional(),
   nativeChatContext: z
     .object({
       tabId: z.string().min(1),

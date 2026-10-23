@@ -118,7 +118,8 @@ export const FILE_METHODS = [
         clientId,
         params.terminal ?? null,
         params.crossWorkspace === true,
-        params.nativeChatContext ?? null
+        params.nativeChatContext ?? null,
+        params.userOpened === true
       )
   }),
   ...FILE_TERMINAL_ARTIFACT_METHODS,

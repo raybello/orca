@@ -122,11 +122,16 @@ export function createEditorSaveQueue(store: AppStoreApi): EditorSaveQueue {
             : undefined
         )
         try {
+          // Why spread: only a granted tab names a grant; every other save keeps its call shape.
+          const grantArgs: [string] | [] = liveFile.terminalArtifactGrantId
+            ? [liveFile.terminalArtifactGrantId]
+            : []
           await writeRuntimeFile(
             fileContext,
             liveFile.filePath,
             contentToSave,
-            editorTabFileAccess(state, liveFile)
+            editorTabFileAccess(state, liveFile),
+            ...grantArgs
           )
         } catch (error) {
           // Why: the self-write stamp is only valid after a real write; clear on failure so it can't suppress a real update.

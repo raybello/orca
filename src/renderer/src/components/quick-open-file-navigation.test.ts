@@ -149,6 +149,63 @@ it('resolves paired paths on the host and never falls back to client filesystem 
   ).rejects.toThrow('outside the workspace')
 })
 
+it('opens a host-granted file outside the workspace editable', async () => {
+  mocks.route.current.target = { kind: 'environment', environmentId: 'env-a' }
+  mocks.rpc.mockResolvedValue({
+    exists: true,
+    isDirectory: false,
+    absolutePath: '/outside/Dockerfile',
+    relativePath: null,
+    openTarget: {
+      kind: 'absolute-file',
+      provider: 'local',
+      absolutePath: '/outside/Dockerfile',
+      grantId: 'grant-1'
+    }
+  })
+  await openQuickOpenFile('/outside/Dockerfile', 'wt', '/repo', {
+    pathQuery: '/outside/Dockerfile'
+  })
+  expect(mocks.rpc).toHaveBeenCalledWith(
+    expect.anything(),
+    'files.resolveTerminalPath',
+    expect.objectContaining({ pathText: '/outside/Dockerfile', userOpened: true })
+  )
+  expect(mocks.open).toHaveBeenCalledWith(
+    expect.objectContaining({
+      filePath: '/outside/Dockerfile',
+      relativePath: '/outside/Dockerfile',
+      runtimeEnvironmentId: 'env-a',
+      readOnly: false,
+      terminalArtifactGrantId: 'grant-1'
+    })
+  )
+  expect(mocks.stat).not.toHaveBeenCalled()
+})
+
+it('keeps a grant the host marked read-only read-only', async () => {
+  mocks.route.current.target = { kind: 'environment', environmentId: 'env-a' }
+  mocks.rpc.mockResolvedValue({
+    exists: true,
+    isDirectory: false,
+    absolutePath: '/outside/locked.txt',
+    relativePath: null,
+    openTarget: {
+      kind: 'absolute-file',
+      provider: 'local',
+      absolutePath: '/outside/locked.txt',
+      grantId: 'grant-2',
+      readOnly: true
+    }
+  })
+  await openQuickOpenFile('/outside/locked.txt', 'wt', '/repo', {
+    pathQuery: '/outside/locked.txt'
+  })
+  expect(mocks.open).toHaveBeenCalledWith(
+    expect.objectContaining({ readOnly: true, terminalArtifactGrantId: 'grant-2' })
+  )
+})
+
 it('keeps directories, denied files, missing files and replaced owners out of the editor', async () => {
   mocks.stat.mockResolvedValueOnce({ isDirectory: true })
   await expect(openQuickOpenFile('dir', 'wt', '/repo', { pathQuery: 'dir' })).rejects.toThrow(

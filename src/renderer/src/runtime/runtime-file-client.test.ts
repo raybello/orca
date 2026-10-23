@@ -20,6 +20,41 @@ import {
 installRuntimeFileClientEnvironment()
 
 describe('runtime file client', () => {
+  it('saves a granted host file outside the workspace through its grant', async () => {
+    runtimeEnvironmentCall.mockResolvedValue({
+      id: 'rpc-1',
+      ok: true,
+      result: { ok: true },
+      _meta: { runtimeId: 'remote-runtime' }
+    })
+
+    await writeRuntimeFile(
+      {
+        target: { kind: 'environment', environmentId: 'env-1' },
+        worktreeId: 'wt-1',
+        worktreePath: '/repo'
+      },
+      '/outside/Dockerfile',
+      'FROM alpine\n',
+      undefined,
+      'grant-1'
+    )
+
+    expect(runtimeEnvironmentCall).toHaveBeenCalledWith(
+      expect.objectContaining({
+        selector: 'env-1',
+        method: 'files.writeTerminalArtifact',
+        params: {
+          worktree: 'id:wt-1',
+          grantId: 'grant-1',
+          absolutePath: '/outside/Dockerfile',
+          content: 'FROM alpine\n'
+        }
+      })
+    )
+    expect(fsWriteFile).not.toHaveBeenCalled()
+  })
+
   it('uses local filesystem reads when no remote runtime is active', async () => {
     const localResult: RuntimeReadableFileContent = { content: 'hello', isBinary: false }
     fsReadFile.mockResolvedValue(localResult)

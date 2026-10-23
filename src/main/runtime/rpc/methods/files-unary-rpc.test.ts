@@ -232,7 +232,8 @@ describe('files.resolveTerminalPath RPC', () => {
       undefined,
       'term-1',
       false,
-      null
+      null,
+      false
     )
     expect(response).toMatchObject({
       ok: true,
@@ -260,7 +261,8 @@ describe('files.resolveTerminalPath RPC', () => {
       undefined,
       null,
       true,
-      null
+      null,
+      false
     )
   })
 
@@ -282,7 +284,31 @@ describe('files.resolveTerminalPath RPC', () => {
       undefined,
       null,
       false,
-      { tabId: 'tab-1', sessionId: 'session-1' }
+      { tabId: 'tab-1', sessionId: 'session-1' },
+      false
+    )
+  })
+
+  it('forwards a user-opened path typed into go-to-file', async () => {
+    const { runtime, dispatcher } = createDispatcher()
+
+    await dispatcher.dispatch(
+      makeRequest('files.resolveTerminalPath', {
+        worktree: 'id:wt-1',
+        pathText: '/outside/Dockerfile',
+        userOpened: true
+      })
+    )
+
+    expect(runtime.resolveTerminalPath).toHaveBeenLastCalledWith(
+      'id:wt-1',
+      '/outside/Dockerfile',
+      null,
+      undefined,
+      null,
+      false,
+      null,
+      true
     )
   })
 })

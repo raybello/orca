@@ -34,7 +34,7 @@ export type TerminalFileGrant = {
   // Linux can reuse inodes and coarse mtimes; the digest catches same-size content swaps.
   contentDigest: string | null
   readOnly: boolean
-  provenance: 'terminal-output' | 'native-chat'
+  provenance: 'terminal-output' | 'native-chat' | 'user-opened'
   expiryTimer?: ReturnType<typeof setTimeout>
 }
 
